@@ -35,13 +35,13 @@ function atr(b,p=14){let s=0;for(let i=b.length-p;i<b.length;i++)s+=Math.max(b[i
 const barCache=new Map();
 async function getBars(symbol,tf){
  const cacheKey=symbol+'_'+tf, cached=barCache.get(cacheKey);
- if(cached&&Date.now()-cached.at<25000)return cached.value;
+ if(cached&&Date.now()-cached.at<90000)return cached.value;
  if(symbol==='BTCUSDT'){let interval={M1:'1m',M5:'5m',M15:'15m',H1:'1h'}[tf];let r=await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=1000`,{cache:'no-store'});if(!r.ok)throw Error('Binance market feed error: '+r.status);let a=await r.json();let value={bars:a.slice(0,-1).map(x=>({t:+x[0],o:+x[1],h:+x[2],l:+x[3],c:+x[4]})),source:'Binance public candles',stamp:new Date(+a[a.length-2][6]).toLocaleString()};barCache.set(cacheKey,{at:Date.now(),value});return value;}
  let d=new Date(),to=d.toISOString().slice(0,10);d.setDate(d.getDate()-2);let from=d.toISOString().slice(0,10);
- let apiSymbols=symbol==='XAUUSD'?['XAUUSD']:[symbol+'M',symbol];let lastError='';
+ let apiSymbols=symbol==='XAUUSD'?['XAUUSD']:[symbol,symbol+'M'];let lastError='';
  for(const apiSymbol of apiSymbols){try{
- let r=await fetch(`https://www.algospecial.com/api/ohlc.php?symbol=${apiSymbol}&tf=${tf}&from=${from}&to=${to}&format=json`,{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);
- let j=await r.json(),a=j.data||j.bars||j.result;if(!Array.isArray(a)||a.length<30)throw Error('No sufficient bars for '+apiSymbol);
+ let r=await fetch(`https://www.algospecial.com/api/ohlc.php?symbol=${apiSymbol}&tf=${tf}&from=${from}&to=${to}&format=json`,{cache:'no-store'});if(!r.ok){let detail='';try{detail=(await r.text()).slice(0,140)}catch(_){};throw Error('API '+r.status+' for '+apiSymbol+(r.status===429?' (rate limit; retry shortly)':r.status===404?' (symbol/timeframe dataset not found)':'')+(detail?' — '+detail:''));}
+ let j=await r.json(),a=j.data||j.bars||j.result;if(!Array.isArray(a)||a.length<30)throw Error('API returned fewer than 30 candles for '+apiSymbol);
  let bars=a.map(x=>{let raw=x.Timestamp||x.timestamp||x.time||x.datetime||x.date||x.t;let parsed=typeof raw==='number'?(raw<1e12?raw*1000:raw):Date.parse(String(raw).replace(/\./g,'-'));return {t:parsed,o:+(x.Open??x.open??x.o),h:+(x.High??x.high??x.h),l:+(x.Low??x.low??x.l),c:+(x.Close??x.close??x.c)}}).filter(x=>Number.isFinite(x.t)&&[x.o,x.h,x.l,x.c].every(Number.isFinite)).sort((x,y)=>x.t-y.t);
  if(bars.length<30)throw Error('Candle format invalid for '+apiSymbol);
  let value={bars,source:(symbol==='XAUUSD'?'AlgoSpecial Gold OHLC preview':'AlgoSpecial Forex OHLC preview · '+apiSymbol)+' — not broker live quotes',stamp:new Date(bars.at(-1).t).toLocaleString()};barCache.set(cacheKey,{at:Date.now(),value});return value;
@@ -196,7 +196,8 @@ const pairs=['XAUUSD','BTCUSDT','EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD','US
 const fmtPair=n=>Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:5});
 async function scanPairs(){
  const btn=document.getElementById('scanPairs'),out=document.getElementById('pairResults');btn.disabled=true;btn.textContent='SCANNING…';
- const rows=await Promise.all(pairs.map(async p=>{try{let {bars,source}=await getBars(p,'M5');if(bars.length<25)throw Error('Not enough bars');let x=bars.at(-1),prev=bars.slice(-21,-1),hi=Math.max(...prev.map(z=>z.h)),lo=Math.min(...prev.map(z=>z.l));let side=x.l<lo&&x.c>lo?'BUY':x.h>hi&&x.c<hi?'SELL':'WAIT';return {p,side,price:x.c,stamp:new Date(x.t).toLocaleTimeString(),source};}catch(e){return {p,side:'DATA ERROR',err:e.message};}}));
+ const rows=[];
+ for(const p of pairs){try{let {bars,source}=await getBars(p,'M5');if(bars.length<25)throw Error('Not enough bars');let x=bars.at(-1),prev=bars.slice(-21,-1),hi=Math.max(...prev.map(z=>z.h)),lo=Math.min(...prev.map(z=>z.l));let side=x.l<lo&&x.c>lo?'BUY':x.h>hi&&x.c<hi?'SELL':'WAIT';rows.push({p,side,price:x.c,stamp:new Date(x.t).toLocaleTimeString(),source});}catch(e){rows.push({p,side:'DATA ERROR',err:e.message});}await new Promise(resolve=>setTimeout(resolve,350));}
  const rank={BUY:0,SELL:1,WAIT:2,'DATA ERROR':3};rows.sort((a,b)=>rank[a.side]-rank[b.side]);
  out.innerHTML='<div class="small muted">Updated '+new Date().toLocaleTimeString()+'</div>'+rows.map(x=>'<div class="history" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span><b>'+x.p+'</b><br><span class="muted">'+(x.stamp||x.err||'')+'</span></span><b class="'+(x.side==='BUY'?'buy':x.side==='SELL'?'sell':'wait')+'">'+x.side+'</b><span>'+ (Number.isFinite(x.price)?fmtPair(x.price):'—')+'</span></div>').join('');
  const confirmed=rows.filter(x=>x.side==='BUY'||x.side==='SELL');if(confirmed.length){out.innerHTML+='<p class="notice">Confirmed M5 liquidity sweep candidates: '+confirmed.map(x=>x.p+' '+x.side).join(', ')+'. Check broker chart and spread before entry.</p>';}
