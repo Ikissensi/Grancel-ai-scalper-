@@ -27,11 +27,36 @@
  <p class="notice">Badilisha UTC offset kulingana na saa za server/broker na uhakikishe candles zina timestamps sahihi. Anchor 12/13 ni setting ya msimu; si utambuzi wa moja kwa moja wa DST.</p>
  <div id="moduleCards"></div>
 </section></main><footer>GRANCEL AI SCALPER V2 • Analysis only — not connected to Exness</footer>
-<script src="https://unpkg.com/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js"></script>
+
 <script>
 let grChart=null,grCandle=null,grEma9=null,grEma21=null,grHighLine=null,grLowLine=null;
 function initGrChart(){const el=document.getElementById('marketChart');if(!el||!window.LightweightCharts)return;grChart=LightweightCharts.createChart(el,{width:el.clientWidth,height:300,layout:{background:{color:'#121f30'},textColor:'#9aabc0'},grid:{vertLines:{color:'#1d2b3e'},horzLines:{color:'#1d2b3e'}},rightPriceScale:{borderColor:'#293a50'},timeScale:{borderColor:'#293a50',timeVisible:true}});grCandle=grChart.addCandlestickSeries({upColor:'#22c995',downColor:'#ff637a',borderUpColor:'#22c995',borderDownColor:'#ff637a',wickUpColor:'#22c995',wickDownColor:'#ff637a'});grEma9=grChart.addLineSeries({color:'#efbd50',lineWidth:1,title:'EMA 9'});grEma21=grChart.addLineSeries({color:'#55a8ff',lineWidth:1,title:'EMA 21'});grHighLine=grChart.addLineSeries({color:'#ff637a',lineWidth:1,lineStyle:2,title:'Liquidity High'});grLowLine=grChart.addLineSeries({color:'#22c995',lineWidth:1,lineStyle:2,title:'Liquidity Low'});new ResizeObserver(()=>grChart.applyOptions({width:el.clientWidth})).observe(el)}
-function drawGrChart(bars,market,tf,side){if(!grChart)initGrChart();if(!grCandle||!bars?.length)return;const data=bars.map(x=>({time:Math.floor(x.t/1000),open:x.o,high:x.h,low:x.l,close:x.c})).filter((x,i,a)=>!i||x.time>a[i-1].time);grCandle.setData(data);const closes=bars.map(x=>x.c);function avg(p){let k=2/(p+1),v=closes[0],out=[];for(let i=0;i<closes.length;i++){v=i?closes[i]*k+v*(1-k):closes[i];out.push({time:Math.floor(bars[i].t/1000),value:v})}return out.filter((x,i,a)=>!i||x.time>a[i-1].time)}grEma9.setData(avg(9));grEma21.setData(avg(21));const prev=bars.slice(-21,-1),hi=Math.max(...prev.map(x=>x.h)),lo=Math.min(...prev.map(x=>x.l)),t0=data[0].time,t1=data.at(-1).time;grHighLine.setData([{time:t0,value:hi},{time:t1,value:hi}]);grLowLine.setData([{time:t0,value:lo},{time:t1,value:lo}]);const x=bars.at(-1);let markers=[];if(x.l<lo&&x.c>lo)markers.push({time:data.at(-1).time,position:'belowBar',color:'#22c995',shape:'arrowUp',text:'LIQ BUY'});if(x.h>hi&&x.c<hi)markers.push({time:data.at(-1).time,position:'aboveBar',color:'#ff637a',shape:'arrowDown',text:'LIQ SELL'});grCandle.setMarkers(markers);grChart.timeScale().fitContent();document.getElementById('chartMeta').textContent=market+' · '+tf+' · EMA 9/21 · '+new Date(x.t).toLocaleTimeString();document.getElementById('chartState').textContent=side+' · UPDATED';document.getElementById('liqHigh').textContent=hi.toFixed(5);document.getElementById('liqLow').textContent=lo.toFixed(5);const fast=avg(9).at(-1).value,slow=avg(21).at(-1).value;document.getElementById('trendBias').textContent=fast>slow?'BULLISH':fast<slow?'BEARISH':'NEUTRAL';const q=bars.slice(-30,-1);let highs=[],lows=[];for(let i=2;i<q.length-2;i++){if(q[i].h>q[i-1].h&&q[i].h>q[i-2].h&&q[i].h>q[i+1].h&&q[i].h>q[i+2].h)highs.push(q[i].h);if(q[i].l<q[i-1].l&&q[i].l<q[i-2].l&&q[i].l<q[i+1].l&&q[i].l<q[i+2].l)lows.push(q[i].l)}document.getElementById('marketStructure').textContent=highs.length&&x.c>highs.at(-1)?'BOS BULLISH':lows.length&&x.c<lows.at(-1)?'BOS BEARISH':'RANGE / FORMING'}
+function drawGrChart(bars,market,tf,side){
+ const el=document.getElementById('marketChart');if(!el||!bars||bars.length<5)return;
+ let canvas=el.querySelector('canvas');if(!canvas){el.innerHTML='';canvas=document.createElement('canvas');canvas.style.width='100%';canvas.style.height='300px';canvas.style.display='block';el.appendChild(canvas)}
+ const w=Math.max(300,el.clientWidth),h=300,dpr=window.devicePixelRatio||1;canvas.width=w*dpr;canvas.height=h*dpr;const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+ ctx.fillStyle='#0c1726';ctx.fillRect(0,0,w,h);
+ const data=bars.slice(-90),pad={l:10,r:66,t:14,b:24},cw=w-pad.l-pad.r,ch=h-pad.t-pad.b;
+ const prev=bars.slice(-21,-1),hi=Math.max(...prev.map(x=>x.h)),lo=Math.min(...prev.map(x=>x.l));
+ const max=Math.max(...data.map(x=>x.h),hi),min=Math.min(...data.map(x=>x.l),lo),range=max-min||1;
+ const y=v=>pad.t+(max-v)/range*ch,x=i=>pad.l+i*cw/(data.length-1);
+ ctx.strokeStyle='#203149';ctx.lineWidth=1;for(let i=0;i<=4;i++){let yy=pad.t+i*ch/4;ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(w-pad.r,yy);ctx.stroke();ctx.fillStyle='#9aabc0';ctx.font='10px Arial';ctx.fillText((max-i*range/4).toFixed(2),w-pad.r+5,yy+3)}
+ const emaLine=(p,color)=>{let k=2/(p+1),v=data[0].c;ctx.beginPath();data.forEach((b,i)=>{v=i?b.c*k+v*(1-k):v;let xx=x(i),yy=y(v);i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy)});ctx.strokeStyle=color;ctx.lineWidth=1.3;ctx.stroke()}; 
+ ctx.setLineDash([5,4]);ctx.strokeStyle='#ff637a';ctx.beginPath();ctx.moveTo(pad.l,y(hi));ctx.lineTo(w-pad.r,y(hi));ctx.stroke();ctx.strokeStyle='#22c995';ctx.beginPath();ctx.moveTo(pad.l,y(lo));ctx.lineTo(w-pad.r,y(lo));ctx.stroke();ctx.setLineDash([]);
+ const bw=Math.max(2,Math.min(8,cw/data.length*.65));
+ data.forEach((b,i)=>{let xx=x(i),up=b.c>=b.o,col=up?'#22c995':'#ff637a';ctx.strokeStyle=col;ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(xx,y(b.h));ctx.lineTo(xx,y(b.l));ctx.stroke();let top=y(Math.max(b.o,b.c)),bot=y(Math.min(b.o,b.c));ctx.fillRect(xx-bw/2,top,bw,Math.max(1,bot-top))});
+ emaLine(9,'#efbd50');emaLine(21,'#55a8ff');
+ const last=data.at(-1),sweepBuy=last.l<lo&&last.c>lo,sweepSell=last.h>hi&&last.c<hi;
+ if(sweepBuy||sweepSell){ctx.fillStyle=sweepBuy?'#22c995':'#ff637a';ctx.font='bold 11px Arial';ctx.fillText(sweepBuy?'▲ LIQUIDITY SWEEP BUY':'▼ LIQUIDITY SWEEP SELL',pad.l+5,pad.t+13)}
+ ctx.fillStyle='#9aabc0';ctx.font='10px Arial';ctx.fillText(new Date(data[0].t).toLocaleTimeString(),pad.l,h-6);ctx.fillText(new Date(last.t).toLocaleTimeString(),Math.max(pad.l,w-pad.r-65),h-6);
+ document.getElementById('chartMeta').textContent=market+' · '+tf+' · 90 candles · '+new Date(last.t).toLocaleTimeString();
+ document.getElementById('chartState').textContent=side+' · CHART READY';
+ document.getElementById('liqHigh').textContent=hi.toFixed(5);document.getElementById('liqLow').textContent=lo.toFixed(5);
+ const closes=bars.map(b=>b.c),calc=p=>{let k=2/(p+1),v=closes[0];for(let i=1;i<closes.length;i++)v=closes[i]*k+v*(1-k);return v},fast=calc(9),slow=calc(21);
+ document.getElementById('trendBias').textContent=fast>slow?'BULLISH':fast<slow?'BEARISH':'NEUTRAL';
+ const q=bars.slice(-30,-1);let sh=[],sl=[];for(let i=2;i<q.length-2;i++){if(q[i].h>q[i-1].h&&q[i].h>q[i-2].h&&q[i].h>q[i+1].h&&q[i].h>q[i+2].h)sh.push(q[i].h);if(q[i].l<q[i-1].l&&q[i].l<q[i-2].l&&q[i].l<q[i+1].l&&q[i].l<q[i+2].l)sl.push(q[i].l)}
+ document.getElementById('marketStructure').textContent=sh.length&&last.c>sh.at(-1)?'BOS BULLISH':sl.length&&last.c<sl.at(-1)?'BOS BEARISH':'RANGE / FORMING';
+}
 </script>
 <script>
 const $=x=>document.getElementById(x);let lastSignalKey='';
