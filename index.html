@@ -102,8 +102,12 @@ async function getBars(symbol,tf){
  const value={bars:mapped,source:'Deriv public candles · '+symbol,stamp:new Date(mapped.at(-1).t).toLocaleString()};barCache.set(cacheKey,{at:Date.now(),value});return value;
 }
 function addHistory(item){
- let h=getHistory(),key=x=>[x.market,x.tf,x.candleTime,x.side].join('|');
- if(h.some(x=>key(x)===key(item)))return false;
+ let h=getHistory(),key=x=>[x.market,x.tf,x.candleTime,x.side].join('|'),k=key(item),existing=h.find(x=>key(x)===k);
+ if(existing){
+  const terminal=['TP HIT','SL HIT','EXPIRED'].includes(existing.status);
+  if(!terminal){Object.assign(existing,item,{status:'ACTIVE'});saveHistory(h);renderHistory();}
+  return false;
+ }
  h.unshift(item);h=h.slice(0,1000);saveHistory(h);renderHistory();return true;
 }
 function hasActiveSignal(){return getHistory().some(x=>x.status==='ACTIVE')}
@@ -325,12 +329,12 @@ async function analyze(){
  $('slLabel').textContent=side==='WAIT'?'PROVISIONAL STOP LOSS':'STOP LOSS';
  $('tpLabel').textContent=side==='WAIT'?'PROVISIONAL TAKE PROFIT':'TP · '+tpMethod;
  $('plan').style.display=side==='WAIT'?'none':'block';$('entry').textContent=nfmt(entry);$('sl').textContent=nfmt(sl);$('tp').textContent=nfmt(tp);$('risk').textContent=nfmt(dist);
- if(side!=='WAIT'){let key=`${market}-${tf}-${last.t}-${side}`;if(key!==lastSignalKey){lastSignalKey=key;let item={side,market,tf,entry:nfmt(entry),sl:nfmt(sl),tp:nfmt(tp),time:new Date().toLocaleString(),candleTime:last.t,status:'ACTIVE'};if(addHistory(item))notifySignal(`GRANCEL ${side} ${market}`,`Entry ${item.entry} | SL ${item.sl} | TP ${item.tp}`)}}
+ if(side!=='WAIT'){let key=`${market}-${tf}-${last.t}-${side}`;let item={side,market,tf,entry:nfmt(entry),sl:nfmt(sl),tp:nfmt(tp),time:new Date().toLocaleString(),candleTime:last.t,status:'ACTIVE'};if(key!==lastSignalKey){lastSignalKey=key;if(addHistory(item))notifySignal(`GRANCEL ${side} ${market}`,`Entry ${item.entry} | SL ${item.sl} | TP ${item.tp}`)}else{addHistory(item)}}
  $('reasons').innerHTML=why.map(x=>`<li>${x}</li>`).join('');$('status').textContent='Analysis complete · '+new Date().toLocaleTimeString();
  }catch(e){$('status').textContent=e.message+' — check internet or retry.';$('reasons').innerHTML='<li>No signal generated because reliable candle data could not be loaded.</li>';$('priceinfo').textContent='Feed unavailable';$('signalinfo').textContent='No data = no signal. Do not trade using old values.';$('plan').style.display='none'}finally{analysisBusy=false;if(rerunPending){rerunPending=false;setTimeout(analyze,150)}}
 }
 $('analyze').onclick=analyze;$('market').onchange=()=>{subscribeSelectedTick();analyze();refreshLivePrice()};$('tf').onchange=()=>{barCache.delete($('market').value+'_'+$('tf').value);analyze();};
-$('clear').onclick=()=>{localStorage.removeItem('grancelHistory');renderHistory()};
+$('clear').onclick=()=>{localStorage.removeItem('grancelHistory');lastSignalKey='';renderHistory()};
 $('notify').onclick=async()=>{if(!('Notification'in window)){alert('This browser does not support notifications.');return}let p=await Notification.requestPermission();$('notifyState').textContent=p==='granted'?'On':p;$('notify').textContent=p==='granted'?'NOTIFICATIONS ENABLED':'ENABLE NOTIFICATIONS'};
 renderHistory();ensureDerivConnection().then(()=>{subscribeSelectedTick();analyze();refreshLivePrice();if(!autoScanEnabled){autoScanEnabled=true;$('scanAll').textContent='STOP AUTO SCAN';scanAllMarketsLoopStart();}}).catch(e=>{$('feednote').textContent=e.message;$('status').textContent='Deriv connection failed';});setInterval(refreshLivePrice,15000);
 </script>
