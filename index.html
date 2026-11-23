@@ -18,7 +18,7 @@
 <section class="card"><label>IMPORTANT — DATA & RISK</label><div class="notice">XAUUSD candle feed is third-party historical OHLC preview data, not Exness bid/ask or guaranteed live quotes. Compare price and candle time with your Exness chart before using any setup. BTCUSDT uses Binance public candles. This app only analyzes and sends signals; it does not place trades. When WAIT is shown, Entry/SL/TP are indicative reference levels only, not an active trade setup. Signals are not guaranteed profits. Always check spread, news, slippage and position size.</div><div class="pill">M1 / M5 / M15</div><div class="pill">Liquidity sweep</div><div class="pill">Liquidity sweep only</div><div class="pill">EMA + RSI filter</div><div class="pill">ATR-based SL</div></section>
 
 <section class="card" id="pairScanner"><div class="row" style="justify-content:space-between;align-items:center"><div><b style="font-size:17px">AUTO PAIR SCANNER</b><div class="small">Huchunguza liquidity sweep ya M5 kwa masoko yote</div></div><button class="go" id="scanPairs" style="width:auto">SCAN ALL PAIRS</button></div><div id="pairResults" class="small" style="margin-top:12px">Bonyeza SCAN ALL PAIRS kuanza.</div><p class="notice">Scanner hii inatumia M5 closed candles. Forex ni OHLC preview feed; spread na bei za broker zinaweza kutofautiana. Pair isipopatikana itaonyesha DATA ERROR, haitatengeneza signal.</p></section>\n<section class="card" id="multiModule">
- <div class="row" style="justify-content:space-between;align-items:center"><div><b style="font-size:17px">MULTI-MODULE SIGNALS</b><div class="small">Modules 4 zinachambua kwa wakati mmoja</div></div><button class="go" id="runModules" style="width:auto">RUN ALL MODULES</button></div>
+ <div class="row" style="justify-content:space-between;align-items:center"><div><b style="font-size:17px">MULTI-MODULE SIGNALS</b><div class="small">Modules 5 zinachambua kwa wakati mmoja</div></div><button class="go" id="runModules" style="width:auto">RUN ALL MODULES</button></div>
  <div class="row" style="margin-top:12px">
   <div class="field"><label>SERVER UTC OFFSET (hours)</label><select id="serverOffset"><option value="-5">UTC-5</option><option value="-4">UTC-4</option><option value="-3">UTC-3</option><option value="-2">UTC-2</option><option value="-1">UTC-1</option><option value="0" selected>UTC+0 (Exness GMT)</option><option value="1">UTC+1</option><option value="2">UTC+2</option><option value="3">UTC+3</option><option value="4">UTC+4</option></select></div>
   <div class="field"><label>ANCHOR HOUR (SERVER TIME)</label><select id="anchorHour"><option value="12">12:00</option><option value="13" selected>13:00</option></select></div>
@@ -113,6 +113,7 @@ const defs=[
  {id:'crt',name:'2. CRT',tf:'M1',desc:'M5 candle iliyofungwa ndiyo range; M1 sweep, reclaim na break ya candle iliyotangulia.'},
  {id:'anchor',name:'3. ANCHOR',tf:'M1',desc:'H1 anchor candle ya saa uliyochagua; trade window ya saa 4 baada ya candle kufungwa.'},
  {id:'asia',name:'4. ASIA SWEEP',tf:'M5',desc:'Asia range 00:00–07:00; sweep/reclaim na break ya candles 3.'},
+ {id:'sr',name:'5. S/R SCALP',tf:'M1',desc:'M5 hutambua trend na support/resistance; M1 hutafuta wick rejection kwa masharti mepesi.'},
 ];
 const modState={};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -144,13 +145,36 @@ function calcModule(id,data,offset,anchorHour,rr){
  if(id==='anchor'){if(h1.length<8||m1.length<30)throw Error('Inahitaji H1 na M1 candles');let now=m1.at(-1).t,day=getTsDay(now,offset),candles=h1.filter(x=>getTsDay(x.t,offset)===day&&getTsHour(x.t,offset)===anchorHour);if(!candles.length)return {side:'WAIT',entry:m1.at(-1).c,reason:'Anchor H1 candle ya saa '+anchorHour+':00 haijapatikana leo.'};let a=candles[0],start=a.t+3600000;if(now<start||now>start+4*3600000)return {side:'WAIT',entry:m1.at(-1).c,reason:'Nje ya dirisha la trade la saa 4 baada ya Anchor.'};let b=m1.filter(x=>x.t>=start&&x.t<=now);let s=sweep(b,a.h,a.l,1,12);if(!s)return {side:'WAIT',entry:m1.at(-1).c,reason:'Hakuna Anchor range sweep/reclaim iliyothibitishwa.'};return resultFromSweep(s,b,rr,s.side==='BUY'?a.h:a.l);}
  if(id==='asia'){if(m5.length<50)throw Error('Inahitaji M5 candles za kutosha');let now=m5.at(-1).t,day=getTsDay(now,offset),asia=m5.filter(x=>getTsDay(x.t,offset)===day&&getTsHour(x.t,offset)<7);if(asia.length<6)return {side:'WAIT',entry:m5.at(-1).c,reason:'Asia range haijajengeka bado (00:00–07:00 server).'};let tradeHour=getTsHour(now,offset);if(tradeHour<7||tradeHour>=21)return {side:'WAIT',entry:m5.at(-1).c,reason:'Nje ya trade window ya Asia Sweep (07:00–21:00).'};let H=Math.max(...asia.map(x=>x.h)),L=Math.min(...asia.map(x=>x.l)),b=m5.filter(x=>getTsDay(x.t,offset)===day&&getTsHour(x.t,offset)>=7);let s=sweep(b,H,L,3,6);return s?resultFromSweep(s,b,rr):{side:'WAIT',entry:m5.at(-1).c,reason:'Hakuna sweep + break ya candles 3.'};}
 
+
+ if(id==='sr'){
+  if(m5.length<55||m1.length<20)throw Error('Inahitaji M5 na M1 candles za kutosha');
+  const closes=m5.map(x=>x.c),e20=emaArr(closes.slice(-80),20),e50=emaArr(closes.slice(-100),50);
+  const bias=e20>e50?'BUY':e20<e50?'SELL':'NEUTRAL';
+  const recent=m5.slice(-35,-1),levels=[];
+  for(let i=2;i<recent.length-2;i++){
+   const x=recent[i];
+   if(x.l<recent[i-1].l&&x.l<recent[i-2].l&&x.l<recent[i+1].l&&x.l<recent[i+2].l)levels.push({type:'support',price:x.l});
+   if(x.h>recent[i-1].h&&x.h>recent[i-2].h&&x.h>recent[i+1].h&&x.h>recent[i+2].h)levels.push({type:'resistance',price:x.h});
+  }
+  if(!levels.length)throw Error('M5 S/R levels hazijapatikana bado');
+  const x=m1.at(-1),body=Math.max(Math.abs(x.c-x.o),1e-9),lower=Math.min(x.o,x.c)-x.l,upper=x.h-Math.max(x.o,x.c);
+  const tol=Math.max(atrArr(m5)*0.35,x.c*0.00035);
+  const supports=levels.filter(z=>z.type==='support').sort((a,b)=>Math.abs(x.l-a.price)-Math.abs(x.l-b.price));
+  const resistances=levels.filter(z=>z.type==='resistance').sort((a,b)=>Math.abs(x.h-a.price)-Math.abs(x.h-b.price));
+  const sup=supports[0],res=resistances[0];
+  const buyReject=sup&&Math.abs(x.l-sup.price)<=tol&&lower>=body*0.25&&x.c>sup.price&&x.c>=x.o;
+  const sellReject=res&&Math.abs(x.h-res.price)<=tol&&upper>=body*0.25&&x.c<res.price&&x.c<=x.o;
+  if(buyReject&&(bias!=='SELL'))return resultFromSweep({side:'BUY',wick:x.l},m1,rr);
+  if(sellReject&&(bias!=='BUY'))return resultFromSweep({side:'SELL',wick:x.h},m1,rr);
+  return {side:'WAIT',entry:x.c,reason:'S/R imelegezwa: M5 trend bias '+bias+'; M1 inahitaji wick rejection ya angalau 25% ya body karibu na level (ATR tolerance 0.35).'};
+ }
  return {side:'WAIT',reason:'Module not ready'};
 }
 async function runOne(d,market,offset,anchorHour){
  let s=modState[d.id],signal=document.getElementById(d.id+'-signal'),status=document.getElementById(d.id+'-status');
  if(!s.enabled){signal.textContent='OFF';signal.className='wait';status.textContent='DISABLED';['entry','sl','tp'].forEach(k=>document.getElementById(d.id+'-'+k).textContent='—');document.getElementById(d.id+'-reason').textContent='Module imezimwa.';return;}
  try{
- let needed=d.id==='liq'?[s.tf]:d.id==='crt'?['M1','M5']:d.id==='anchor'?['M1','H1']:d.id==='asia'?['M5']:['M5'];
+ let needed=d.id==='liq'?[s.tf]:d.id==='crt'?['M1','M5']:d.id==='anchor'?['M1','H1']:d.id==='asia'?['M5']:d.id==='sr'?['M1','M5']:['M5'];
  let entries=await Promise.all(needed.map(async tf=>[tf,await getBars(market,tf)]));let data=Object.fromEntries(entries);
  let out=calcModule(d.id,data,offset,anchorHour,s.rr),side=out.side;
  if(side==='BUY'&&!s.buy||side==='SELL'&&!s.sell){side='WAIT';out.reason='Direction imezimwa kwenye BUY/SELL filter ya module.';}
