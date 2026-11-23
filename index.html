@@ -125,7 +125,7 @@ async function analyze(){
  $('entryLabel').textContent=side==='WAIT'?'PROVISIONAL ENTRY ('+levelSide+')':'ENTRY';
  $('slLabel').textContent=side==='WAIT'?'PROVISIONAL STOP LOSS':'STOP LOSS';
  $('tpLabel').textContent=side==='WAIT'?'PROVISIONAL TAKE PROFIT':'TP · PREVIOUS BODY';
- $('plan').style.display='block';$('entry').textContent=nfmt(entry);$('sl').textContent=nfmt(sl);$('tp').textContent=nfmt(tp);$('risk').textContent=nfmt(dist);
+ $('plan').style.display=side==='WAIT'?'none':'block';$('entry').textContent=nfmt(entry);$('sl').textContent=nfmt(sl);$('tp').textContent=nfmt(tp);$('risk').textContent=nfmt(dist);
  if(side!=='WAIT'){let key=`${market}-${tf}-${last.t}-${side}`;if(key!==lastSignalKey){lastSignalKey=key;let item={side,market,tf,entry:nfmt(entry),sl:nfmt(sl),tp:nfmt(tp),time:new Date().toLocaleString()};addHistory(item);notifySignal(`GRANCEL ${side} ${market}`,`Entry ${item.entry} | SL ${item.sl} | TP ${item.tp}`)}}
  $('reasons').innerHTML=why.map(x=>`<li>${x}</li>`).join('');$('status').textContent='Analysis complete · Updated '+new Date().toLocaleTimeString();
  }catch(e){$('status').textContent=e.message+' — check internet or retry.';$('reasons').innerHTML='<li>No signal generated because reliable candle data could not be loaded.</li>';$('price').textContent='—';$('priceinfo').textContent='Feed unavailable';$('signalinfo').textContent='No data = no signal. Do not trade using old values.';$('plan').style.display='none'}
