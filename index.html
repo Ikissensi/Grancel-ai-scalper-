@@ -134,11 +134,11 @@ function ensureDerivConnection(){
   const timeout=setTimeout(()=>{derivConnectPromise=null;reject(new Error('Deriv connection timed out'));},15000);
   derivSocket.onopen=()=>{derivRequest({active_symbols:'full'}).then(data=>{
     clearTimeout(timeout);
-    const list=data.active_symbols||[];
-    const candidates=list.filter(x=>/BTC/i.test((x.symbol||'')+' '+(x.display_name||'')));
-    const exact=candidates.find(x=>/BTC\s*\/\s*USD|BTCUSD/i.test((x.display_name||'')+' '+(x.symbol||''))&&/crypto/i.test((x.market||'')+' '+(x.market_display_name||'')));
-    const chosen=exact||candidates.find(x=>/BTCUSD/i.test(x.symbol||''))||candidates.find(x=>/BTC/i.test(x.display_name||''));
-    if(!chosen){reject(new Error('Deriv active symbols haijarudisha BTC/USD. Angalia instruments za BTC kwenye Deriv.'));return;}
+    const list=data.active_symbols||data.data?.active_symbols||[];
+    const candidates=list.filter(x=>/BTC|BITCOIN/i.test([x.symbol,x.display_name,x.market,x.market_display_name,x.submarket,x.submarket_display_name].filter(Boolean).join(' ')));
+    const exact=candidates.find(x=>/BTC\\s*\\/\\s*USD|BTCUSD|BITCOIN\\s*\\/\\s*USD/i.test([x.display_name,x.symbol].filter(Boolean).join(' ')));
+    const chosen=exact||candidates.find(x=>/BTC|BITCOIN/i.test([x.symbol,x.display_name].filter(Boolean).join(' ')));
+    if(!chosen){const sample=list.slice(0,12).map(x=>(x.symbol||'?')+':'+(x.display_name||'?')).join(', ');reject(new Error('BTC haijaonekana kwenye '+list.length+' Deriv symbols. Mfano: '+sample));return;}
     derivSymbol=chosen.symbol;
     derivSocket.send(JSON.stringify({ticks:derivSymbol,subscribe:1,req_id:++derivReqId}));
     $('feednote').textContent='DERIV LIVE FEED CONNECTED · '+(chosen.display_name||derivSymbol)+' · '+derivSymbol;
