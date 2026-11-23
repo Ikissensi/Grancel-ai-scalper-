@@ -7,7 +7,7 @@
 <header><div class="brand">GRANCEL <span>AI SCALPER V2</span></div><div class="sub">ANDROID MARKET ANALYSIS • SMC SIGNAL DASHBOARD</div></header>
 <main>
 <section class="card"><div class="row">
-<div class="field"><label>MARKET</label><select id="market"><option value="BTCUSDT" selected>BTCUSDT · Bitcoin</option></select></div>
+<div class="field"><label>MARKET</label><select id="market"><option value="DERIV_BTCUSD" selected>Deriv BTC/USD · Bitcoin</option></select></div>
 <div class="field"><label>TIMEFRAME</label><select id="tf"><option>M1</option><option selected>M5</option></select></div>
 <div class="field" style="max-width:130px"><label>ACTION</label><button class="go" id="analyze">ANALYZE</button></div>
 </div><div class="status" style="margin-top:12px"><span class="dot"></span><span id="status">Ready — press ANALYZE</span></div><div class="small" id="feednote"></div></section>
@@ -17,9 +17,9 @@
 <section class="card"><label>ANALYSIS REASONS</label><ul id="reasons"><li>Press ANALYZE to retrieve candles.</li></ul></section>
 <section class="card"><label>PERFORMANCE TRACKER</label><div class="stats"><div class="stat"><span>TOTAL SIGNALS</span><b id="statTotal">0</b></div><div class="stat"><span>WINNING · TP HIT</span><b id="statWins">0</b></div><div class="stat"><span>LOSING · SL HIT</span><b id="statLosses">0</b></div><div class="stat"><span>ACTIVE</span><b id="statActive">0</b></div><div class="stat"><span>EXPIRED</span><b id="statExpired">0</b></div><div class="stat"><span>UNVERIFIED OLD</span><b id="statUnverified">0</b></div><div class="stat"><span>WIN RATE</span><b id="statWinRate">—</b></div></div><div class="metric"><span class="small">NET RESULT · CLOSED SIGNALS (PRICE POINTS)</span><b id="statNet">0.00</b></div><p class="notice">TP/SL results are checked against subsequent closed BTC candles. If TP and SL are both touched in the same candle, the tracker counts SL first (conservative). Signals expire after 100 closed candles without TP or SL. This is candle-based tracking, not exchange execution or account P/L.</p></section>\n<section class="card"><div class="row" style="justify-content:space-between"><label style="margin:0">SIGNAL HISTORY</label><button id="clear" style="width:auto;padding:7px 11px;font-size:11px">CLEAR</button></div><div id="history" class="small muted" style="margin-top:10px">No confirmed signals saved.</div></section>
 <section class="card"><label>ALERTS</label><div class="row"><button id="notify" style="flex:1">ENABLE NOTIFICATIONS</button><span class="pill" id="notifyState">Off</span></div><p class="notice">Alerts fire as soon as a completed M1/M5 candle confirms the setup, while this page is open and notifications are allowed. Android may pause background tabs; keep this page active for fastest alerts.</p></section>
-<section class="card"><label>IMPORTANT — DATA & RISK</label><div class="notice">BTCUSDT uses Binance public candles and live WebSocket price stream. Confirm candle time and price before using any setup. This app only analyzes and sends signals; it does not place trades. When WAIT is shown, Entry/SL/TP are indicative reference levels only, not an active trade setup. Signals are not guaranteed profits. Always check spread, news, slippage and position size.</div><div class="pill">M1 / M5</div><div class="pill">Liquidity sweep</div><div class="pill">Liquidity sweep only</div><div class="pill">EMA 9/21 context</div><div class="pill">BOS structure</div><div class="pill">Liquidity zones</div><div class="pill">ATR-based SL</div></section>
+<section class="card"><label>IMPORTANT — DATA & RISK</label><div class="notice">BTC/USD uses Deriv public candles and live WebSocket tick stream. Confirm the Deriv symbol, candle time and quote before using any setup. This app only analyzes and sends signals; it does not place trades. When WAIT is shown, Entry/SL/TP are indicative reference levels only, not an active trade setup. Signals are not guaranteed profits. Always check spread, news, slippage and position size.</div><div class="pill">M1 / M5</div><div class="pill">Liquidity sweep</div><div class="pill">Liquidity sweep only</div><div class="pill">EMA 9/21 context</div><div class="pill">BOS structure</div><div class="pill">Liquidity zones</div><div class="pill">ATR-based SL</div></section>
 
-</main><footer>GRANCEL AI SCALPER V2 • Analysis only — not connected to Exness</footer>
+</main><footer>GRANCEL AI SCALPER V2 • Deriv market-data analysis only — does not place trades</footer>
 
 <script>
 let grChart=null,grCandle=null,grEma9=null,grEma21=null,grHighLine=null,grLowLine=null;
@@ -61,7 +61,17 @@ const barCache=new Map();
 async function getBars(symbol,tf){
  const cacheKey=symbol+'_'+tf, cached=barCache.get(cacheKey);
  if(cached&&Date.now()-cached.at<5000)return cached.value;
- if(symbol==='BTCUSDT'){let interval={M1:'1m',M5:'5m',M15:'15m',H1:'1h'}[tf];let r=await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=1000`,{cache:'no-store'});if(!r.ok)throw Error('Binance market feed error: '+r.status);let a=await r.json();let value={bars:a.slice(0,-1).map(x=>({t:+x[0],o:+x[1],h:+x[2],l:+x[3],c:+x[4]})),source:'Binance public candles',stamp:new Date(+a[a.length-2][6]).toLocaleString()};barCache.set(cacheKey,{at:Date.now(),value});return value;}
+ if(symbol==='DERIV_BTCUSD'){
+  const derivSymbol=await ensureDerivConnection();
+  const granularity={M1:60,M5:300,M15:900,H1:3600}[tf]||300;
+  const payload=await derivRequest({ticks_history:derivSymbol,count:1000,end:'latest',style:'candles',granularity});
+  const candles=payload.candles||[];
+  if(candles.length<30)throw Error('Deriv returned fewer than 30 BTC/USD candles.');
+  const mapped=candles.slice(0,-1).map(x=>({t:Number(x.epoch)*1000,o:+x.open,h:+x.high,l:+x.low,c:+x.close})).filter(x=>[x.t,x.o,x.h,x.l,x.c].every(Number.isFinite));
+  if(mapped.length<30)throw Error('Deriv candle data is incomplete.');
+  const value={bars:mapped,source:'Deriv public BTC/USD candles · '+derivSymbol,stamp:new Date(mapped.at(-1).t).toLocaleString()};
+  barCache.set(cacheKey,{at:Date.now(),value});return value;
+}
  let d=new Date(),to=d.toISOString().slice(0,10);d.setDate(d.getDate()-2);let from=d.toISOString().slice(0,10);
  let apiSymbols=symbol==='XAUUSD'?['XAUUSD']:[symbol,symbol+'M'];let lastError='';
  for(const apiSymbol of apiSymbols){try{
@@ -107,7 +117,52 @@ function evaluateHistory(bars,market,tf){
  renderHistory();
 }
 function notifySignal(title,body){if(navigator.vibrate)navigator.vibrate([250,100,250]);if('Notification'in window&&Notification.permission==='granted')new Notification(title,{body,tag:title+Date.now(),requireInteraction:true});}
-let btcSocket=null,btcReconnectTimer=null,lastLivePrice=null,analysisBusy=false,rerunPending=false;
+let derivSocket=null,derivConnectPromise=null,derivSymbol='',derivReqId=10,derivWaiters=new Map(),lastLivePrice=null,lastDerivBucket=null,analysisBusy=false,rerunPending=false;
+function derivRequest(payload,timeout=12000){
+ return new Promise((resolve,reject)=>{
+  if(!derivSocket||derivSocket.readyState!==WebSocket.OPEN){reject(new Error('Deriv WebSocket is not connected'));return;}
+  const req_id=++derivReqId,timer=setTimeout(()=>{derivWaiters.delete(req_id);reject(new Error('Deriv request timeout'));},timeout);
+  derivWaiters.set(req_id,{resolve,reject,timer});derivSocket.send(JSON.stringify({...payload,req_id}));
+ });
+}
+function ensureDerivConnection(){
+ if(derivSymbol&&derivSocket&&derivSocket.readyState===WebSocket.OPEN)return Promise.resolve(derivSymbol);
+ if(derivConnectPromise)return derivConnectPromise;
+ derivConnectPromise=new Promise((resolve,reject)=>{
+  try{derivSocket=new WebSocket('wss://api.derivws.com/trading/v1/options/ws/public');}
+  catch(e){derivConnectPromise=null;reject(e);return;}
+  const timeout=setTimeout(()=>{derivConnectPromise=null;reject(new Error('Deriv connection timed out'));},15000);
+  derivSocket.onopen=()=>{derivRequest({active_symbols:'full'}).then(data=>{
+    clearTimeout(timeout);
+    const list=data.active_symbols||[];
+    const candidates=list.filter(x=>/BTC/i.test((x.symbol||'')+' '+(x.display_name||'')));
+    const exact=candidates.find(x=>/BTC\s*\/\s*USD|BTCUSD/i.test((x.display_name||'')+' '+(x.symbol||''))&&/crypto/i.test((x.market||'')+' '+(x.market_display_name||'')));
+    const chosen=exact||candidates.find(x=>/BTCUSD/i.test(x.symbol||''))||candidates.find(x=>/BTC/i.test(x.display_name||''));
+    if(!chosen){reject(new Error('Deriv active symbols haijarudisha BTC/USD. Angalia instruments za BTC kwenye Deriv.'));return;}
+    derivSymbol=chosen.symbol;
+    derivSocket.send(JSON.stringify({ticks:derivSymbol,subscribe:1,req_id:++derivReqId}));
+    $('feednote').textContent='DERIV LIVE FEED CONNECTED · '+(chosen.display_name||derivSymbol)+' · '+derivSymbol;
+    resolve(derivSymbol);
+   }).catch(e=>{clearTimeout(timeout);reject(e);});};
+  derivSocket.onmessage=ev=>{try{
+    const d=JSON.parse(ev.data);
+    if(d.req_id&&derivWaiters.has(d.req_id)){const w=derivWaiters.get(d.req_id);clearTimeout(w.timer);derivWaiters.delete(d.req_id);if(d.error)w.reject(new Error(d.error.message||'Deriv API error'));else w.resolve(d);return;}
+    if(d.msg_type==='tick'&&d.tick){const p=+d.tick.quote,epoch=+d.tick.epoch;if(Number.isFinite(p)){const el=$('price');el.textContent=nfmt(p);el.style.color=lastLivePrice===null?'var(--txt)':p>lastLivePrice?'var(--green)':p<lastLivePrice?'var(--red)':'var(--txt)';lastLivePrice=p;$('priceinfo').textContent='Deriv '+derivSymbol+' · live tick · '+new Date(epoch*1000).toLocaleTimeString();
+      const tf=$('tf').value,seconds=tf==='M1'?60:tf==='M5'?300:tf==='M15'?900:3600,bucket=Math.floor(epoch/seconds);
+      if(lastDerivBucket!==null&&bucket!==lastDerivBucket){barCache.delete('DERIV_BTCUSD_'+tf);analyze();}
+      lastDerivBucket=bucket;
+    }}
+   }catch(e){}};
+  derivSocket.onerror=()=>{$('feednote').textContent='Deriv connection error. Check internet and reload.';};
+  derivSocket.onclose=()=>{derivSocket=null;derivSymbol='';derivConnectPromise=null;};
+ }).catch(e=>{derivConnectPromise=null;throw e;});
+ return derivConnectPromise;
+}
+async function refreshLivePrice(){
+ if($('market').value!=='DERIV_BTCUSD')return;
+ try{await ensureDerivConnection();if(lastLivePrice===null){const {bars}=await getBars('DERIV_BTCUSD',$('tf').value);const p=bars.at(-1)?.c;if(Number.isFinite(p)){$('price').textContent=nfmt(p);$('priceinfo').textContent='Deriv '+derivSymbol+' · latest closed candle';}}}
+ catch(e){$('price').textContent='—';$('priceinfo').textContent='Deriv BTC/USD feed unavailable · '+e.message;$('feednote').textContent='No live Deriv quote received. Do not use old prices.';}
+}
 function connectBinanceStream(){
  if(btcSocket&&(btcSocket.readyState===WebSocket.OPEN||btcSocket.readyState===WebSocket.CONNECTING))return;
  try{btcSocket=new WebSocket('wss://stream.binance.com:9443/stream?streams=btcusdt@trade/btcusdt@kline_1m/btcusdt@kline_5m');}catch(e){$('feednote').textContent='Live stream connection failed; REST fallback active.';return;}
@@ -150,13 +205,11 @@ async function analyze(){
  if(sweepLow){side='BUY';why.unshift('BUY: candle ime-sweep LOW ya candle iliyotangulia, kisha ikafunga tena ndani ya range yake.')}
  else if(sweepHigh){side='SELL';why.unshift('SELL: candle ime-sweep HIGH ya candle iliyotangulia, kisha ikafunga tena ndani ya range yake.')}
  else{why.unshift('Hakuna sweep + rejection ya candle iliyotangulia. Subiri candle iliyofungwa.')}
- // Safety gate: analysis candles/quotes are Binance BTCUSDT, while user's execution chart is Exness BTCUSDm.
- // Do not publish or alert a trade signal until both feeds are the same broker/instrument.
- if(side!=='WAIT'){side='WAIT';why.unshift('BROKER FEED MISMATCH: Binance BTCUSDT haiwezi kutumika kama bei halisi ya Exness BTCUSDm. Signal imezuiwa kuzuia Entry/SL/TP kupotosha.');}
+
  drawGrChart(bars,market,tf,side);$('price').textContent=nfmt(last.c);$('priceinfo').textContent=`${market} · ${tf} · Candle time: ${stamp}`;$('feednote').textContent=source;
  $('rsi').textContent=rv.toFixed(1);$('ema').textContent=fast>slow?'Bullish':'Bearish';$('structure').textContent=sweepLow?'LOW SWEEP':sweepHigh?'HIGH SWEEP':'NO SWEEP';$('count').textContent=bars.length;
  $('signal').textContent=side;$('signal').className='signal '+(side==='BUY'?'buy':side==='SELL'?'sell':'wait');
- $('signalinfo').textContent=side==='WAIT'?'Direction NOT confirmed. Binance BTCUSDT data is not the same quote feed as Exness BTCUSDm on MT5. No trade-ready signal until the execution broker feed is connected.':'Entry after rejection candle closes. SL/TP are direction-validated.';
+ $('signalinfo').textContent=side==='WAIT'?'Direction NOT confirmed. Deriv public BTC/USD feed is connected. Confirm it matches the exact BTC/USD instrument on your Deriv trading platform before using a signal.':'Entry after rejection candle closes. SL/TP are direction-validated.';
  let entry=last.c,sl,tp,dist=0;
  let levelSide=side;
  const bodyLow=Math.min(previous.o,previous.c),bodyHigh=Math.max(previous.o,previous.c),bodySize=bodyHigh-bodyLow;
@@ -185,6 +238,6 @@ async function analyze(){
 $('analyze').onclick=analyze;$('market').onchange=()=>{analyze();refreshLivePrice()};$('tf').onchange=()=>{barCache.delete('BTCUSDT_'+$('tf').value);analyze();};
 $('clear').onclick=()=>{localStorage.removeItem('grancelHistory');renderHistory()};
 $('notify').onclick=async()=>{if(!('Notification'in window)){alert('This browser does not support notifications.');return}let p=await Notification.requestPermission();$('notifyState').textContent=p==='granted'?'On':p;$('notify').textContent=p==='granted'?'NOTIFICATIONS ENABLED':'ENABLE NOTIFICATIONS'};
-renderHistory();analyze();refreshLivePrice();connectBinanceStream();setInterval(refreshLivePrice,15000);
+renderHistory();analyze();refreshLivePrice();ensureDerivConnection().catch(e=>$('feednote').textContent=e.message);setInterval(refreshLivePrice,15000);
 </script>
 </body></html>
