@@ -77,7 +77,7 @@ function addHistory(item){let h=JSON.parse(localStorage.getItem('grancelHistory'
 function getHistory(){return JSON.parse(localStorage.getItem('grancelHistory')||'[]')}
 function saveHistory(h){localStorage.setItem('grancelHistory',JSON.stringify(h))}
 function renderStats(){
- const h=getHistory(),wins=h.filter(x=>x.status==='TP HIT').length,losses=h.filter(x=>x.status==='SL HIT').length,active=h.filter(x=>!x.status||x.status==='ACTIVE').length,expired=h.filter(x=>x.status==='EXPIRED').length,closed=wins+losses,net=h.reduce((a,x)=>a+(x.status==='TP HIT'?Number(x.resultPoints||0):x.status==='SL HIT'?Number(x.resultPoints||0):0),0);
+ const h=getHistory(),wins=h.filter(x=>x.status==='TP HIT').length,losses=h.filter(x=>x.status==='SL HIT').length,active=h.filter(x=>x.status==='ACTIVE').length,expired=h.filter(x=>x.status==='EXPIRED').length,unverified=h.filter(x=>x.status==='UNVERIFIED').length,closed=wins+losses,net=h.reduce((a,x)=>a+(x.status==='TP HIT'?Number(x.resultPoints||0):x.status==='SL HIT'?Number(x.resultPoints||0):0),0);
  $('statTotal').textContent=h.length;$('statWins').textContent=wins;$('statLosses').textContent=losses;$('statActive').textContent=active;$('statExpired').textContent=expired;$('statUnverified').textContent=unverified;$('statWinRate').textContent=closed?(wins/closed*100).toFixed(1)+'%':'—';$('statNet').textContent=(net>=0?'+':'')+net.toFixed(2);$('statNet').style.color=net>0?'var(--green)':net<0?'var(--red)':'var(--txt)';
 }
 function renderHistory(){
