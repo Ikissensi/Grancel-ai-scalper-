@@ -176,25 +176,30 @@ async function analyze(){
  $('signal').textContent=side;$('signal').className='signal '+(side==='BUY'?'buy':side==='SELL'?'sell':'wait');
  $('signalinfo').textContent=side==='WAIT'?'Direction NOT confirmed. Deriv live market feed. Confirm the selected symbol matches the instrument on your Deriv trading platform before using a signal.':'Entry after rejection candle closes. SL/TP are direction-validated.';
  let entry=last.c,sl,tp,dist=0;
- let levelSide=side;
- const bodyLow=Math.min(previous.o,previous.c),bodyHigh=Math.max(previous.o,previous.c),bodySize=bodyHigh-bodyLow;
+ let levelSide=side,tpMethod='PREVIOUS BODY';
+ const bodyLow=Math.min(previous.o,previous.c),bodyHigh=Math.max(previous.o,previous.c);
  const pad=Math.max(av*0.10,entry*0.00008);
  let levelError='';
  if(levelSide==='BUY'){
    sl=last.l-pad;
-   tp=bodyLow-pad;
+   const candidates=[bodyLow-pad,bodyHigh-pad];
+   tp=candidates.find(x=>x>entry);
+   if(!Number.isFinite(tp)){tp=entry+Math.max(av*0.50,pad*2);tpMethod='ATR FALLBACK';}
    dist=entry-sl;
-   if(!(sl<entry && tp>entry)) levelError='BUY imekataliwa: hakuna nafasi ya TP/SL iliyo sahihi.';
+   if(!(sl<entry && tp>entry && dist>0)) levelError='BUY setup imekataliwa: SL haiko chini ya Entry.';
  } else if(levelSide==='SELL'){
    sl=last.h+pad;
-   tp=bodyHigh+pad;
+   const candidates=[bodyHigh+pad,bodyLow+pad];
+   tp=candidates.find(x=>x<entry);
+   if(!Number.isFinite(tp)){tp=entry-Math.max(av*0.50,pad*2);tpMethod='ATR FALLBACK';}
    dist=sl-entry;
-   if(!(sl>entry && tp<entry)) levelError='SELL imekataliwa: hakuna nafasi ya TP/SL iliyo sahihi.';
+   if(!(sl>entry && tp<entry && dist>0)) levelError='SELL setup imekataliwa: SL haiko juu ya Entry.';
  } else {sl=tp=NaN;}
  if(levelError){side='WAIT';why.unshift(levelError);$('signal').textContent='WAIT';$('signal').className='signal wait';$('signalinfo').textContent=levelError;}
+ else if(levelSide!=='WAIT'&&tpMethod==='ATR FALLBACK'){why.unshift('TP fallback imetumika kwa ATR kwa sababu previous candle body haikutoa target iliyo upande sahihi wa Entry.');}
  $('entryLabel').textContent=side==='WAIT'?'PROVISIONAL ENTRY ('+levelSide+')':'ENTRY';
  $('slLabel').textContent=side==='WAIT'?'PROVISIONAL STOP LOSS':'STOP LOSS';
- $('tpLabel').textContent=side==='WAIT'?'PROVISIONAL TAKE PROFIT':'TP · PREVIOUS BODY';
+ $('tpLabel').textContent=side==='WAIT'?'PROVISIONAL TAKE PROFIT':'TP · '+tpMethod;
  $('plan').style.display=side==='WAIT'?'none':'block';$('entry').textContent=nfmt(entry);$('sl').textContent=nfmt(sl);$('tp').textContent=nfmt(tp);$('risk').textContent=nfmt(dist);
  if(side!=='WAIT'){let key=`${market}-${tf}-${last.t}-${side}`;if(key!==lastSignalKey){lastSignalKey=key;let item={side,market,tf,entry:nfmt(entry),sl:nfmt(sl),tp:nfmt(tp),time:new Date().toLocaleString(),candleTime:last.t,status:'ACTIVE'};addHistory(item);notifySignal(`GRANCEL ${side} ${market}`,`Entry ${item.entry} | SL ${item.sl} | TP ${item.tp}`)}}
  $('reasons').innerHTML=why.map(x=>`<li>${x}</li>`).join('');$('status').textContent='Analysis complete · '+new Date().toLocaleTimeString();
