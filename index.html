@@ -18,7 +18,11 @@
 <section class="card" id="chartCard"><div class="row" style="justify-content:space-between;align-items:center"><div><b style="font-size:17px">LIVE CANDLE ANALYSIS</b><div class="small" id="chartMeta">Candlestick chart · M1 / M5</div></div><span class="pill" id="chartState">WAITING FOR DATA</span></div><div id="marketChart" style="height:300px;width:100%;margin-top:12px"></div><div class="grid" style="margin-top:10px"><div class="metric"><span class="small">LIQUIDITY HIGH</span><b id="liqHigh">—</b></div><div class="metric"><span class="small">LIQUIDITY LOW</span><b id="liqLow">—</b></div><div class="metric"><span class="small">MARKET STRUCTURE</span><b id="marketStructure">—</b></div><div class="metric"><span class="small">TREND BIAS</span><b id="trendBias">—</b></div></div></section>
 <section class="card"><label>MARKET PRICE</label><div class="price" id="price">—</div><div class="small" id="priceinfo">No data loaded</div><hr><label>GRANCEL SIGNAL STATUS</label><div id="signal" class="signal wait">WAIT</div><div class="small" id="signalinfo">Direction is not confirmed. Provisional Entry, SL and TP are shown for planning only.</div><div id="plan"><hr><div class="grid"><div class="metric"><span class="small" id="entryLabel">PROVISIONAL ENTRY</span><b id="entry">—</b></div><div class="metric"><span class="small" id="slLabel">PROVISIONAL STOP LOSS</span><b id="sl">—</b></div><div class="metric"><span class="small" id="tpLabel">TP · PREVIOUS BODY</span><b id="tp">—</b></div><div class="metric"><span class="small">RISK DISTANCE</span><b id="risk">—</b></div></div></div><hr><div class="grid"><div class="metric"><span class="small">RSI (14)</span><b id="rsi">—</b></div><div class="metric"><span class="small">EMA 9 / 21</span><b id="ema">—</b></div><div class="metric"><span class="small">STRUCTURE</span><b id="structure">—</b></div><div class="metric"><span class="small">CANDLES</span><b id="count">—</b></div></div></section>
 <section class="card"><label>ANALYSIS REASONS</label><ul id="reasons"><li>Press ANALYZE to retrieve candles.</li></ul></section>
-<section class="card"><label>PERFORMANCE TRACKER</label><div class="stats"><div class="stat"><span>TOTAL SIGNALS</span><b id="statTotal">0</b></div><div class="stat"><span>WINNING · TP HIT</span><b id="statWins">0</b></div><div class="stat"><span>LOSING · SL HIT</span><b id="statLosses">0</b></div><div class="stat"><span>ACTIVE</span><b id="statActive">0</b></div><div class="stat"><span>EXPIRED</span><b id="statExpired">0</b></div><div class="stat"><span>UNVERIFIED OLD</span><b id="statUnverified">0</b></div><div class="stat"><span>WIN RATE</span><b id="statWinRate">—</b></div></div><div class="metric"><span class="small">NET RESULT · CLOSED SIGNALS (PRICE POINTS)</span><b id="statNet">0.00</b></div><p class="notice">TP/SL results are checked against subsequent closed BTC candles. If TP and SL are both touched in the same candle, the tracker counts SL first (conservative). Signals expire after 100 closed candles without TP or SL. This is candle-based tracking, not exchange execution or account P/L.</p></section>\n<section class="card"><div class="row" style="justify-content:space-between"><label style="margin:0">SIGNAL HISTORY</label><button id="clear" style="width:auto;padding:7px 11px;font-size:11px">CLEAR</button></div><div id="history" class="small muted" style="margin-top:10px">No confirmed signals saved.</div></section>
+<section class="card"><label>SEPARATE MARKET PERFORMANCE DASHBOARDS</label>
+<div class="metric" style="margin:10px 0"><b>BTCUSD PERFORMANCE</b><div class="stats"><div class="stat"><span>SIGNALS</span><b id="btcTotal">0</b></div><div class="stat"><span>WINS</span><b id="btcWins">0</b></div><div class="stat"><span>LOSSES</span><b id="btcLosses">0</b></div><div class="stat"><span>ACTIVE</span><b id="btcActive">0</b></div><div class="stat"><span>WIN RATE</span><b id="btcRate">—</b></div></div><div class="small">Net points: <b id="btcNet">0.00</b></div></div>
+<div class="metric" style="margin:10px 0"><b>XAUUSD / GOLD PERFORMANCE</b><div class="stats"><div class="stat"><span>SIGNALS</span><b id="xauTotal">0</b></div><div class="stat"><span>WINS</span><b id="xauWins">0</b></div><div class="stat"><span>LOSSES</span><b id="xauLosses">0</b></div><div class="stat"><span>ACTIVE</span><b id="xauActive">0</b></div><div class="stat"><span>WIN RATE</span><b id="xauRate">—</b></div></div><div class="small">Net points: <b id="xauNet">0.00</b></div></div>
+<div class="metric" style="margin:10px 0"><b>OTHER MARKETS PERFORMANCE</b><div class="stats"><div class="stat"><span>SIGNALS</span><b id="otherTotal">0</b></div><div class="stat"><span>WINS</span><b id="otherWins">0</b></div><div class="stat"><span>LOSSES</span><b id="otherLosses">0</b></div><div class="stat"><span>ACTIVE</span><b id="otherActive">0</b></div><div class="stat"><span>WIN RATE</span><b id="otherRate">—</b></div></div><div class="small">Net points: <b id="otherNet">0.00</b></div></div>
+<p class="notice">BTCUSD, XAUUSD/GOLD na markets nyingine zinafuatiliwa tofauti. Win/Loss hutegemea TP/SL kuguswa kwenye candles zilizofungwa; ikiguswa zote kwenye candle moja, SL huhesabiwa kwanza. Hii ni candle-based tracking, si account P/L wala trade execution.</p></section>\n<section class="card"><div class="row" style="justify-content:space-between"><label style="margin:0">SIGNAL HISTORY</label><button id="clear" style="width:auto;padding:7px 11px;font-size:11px">CLEAR</button></div><div id="history" class="small muted" style="margin-top:10px">No confirmed signals saved.</div></section>
 <section class="card"><label>ALERTS</label><div class="row"><button id="notify" style="flex:1">ENABLE NOTIFICATIONS</button><span class="pill" id="notifyState">Off</span></div><p class="notice">Alerts fire as soon as a completed M1/M5 candle confirms the setup, while this page is open and notifications are allowed. Android may pause background tabs; keep this page active for fastest alerts.</p></section>
 <section class="card"><label>IMPORTANT — DATA & RISK</label><div class="notice">All selected instruments use Deriv candles and live ticks. Dropdown lists only currently open, non-suspended symbols returned by Deriv. This app only analyzes and sends signals; it does not place trades. When WAIT is shown, Entry/SL/TP are indicative reference levels only, not an active trade setup. Signals are not guaranteed profits. Always check spread, news, slippage and position size.</div><div class="pill">M1 / M5</div><div class="pill">Liquidity sweep</div><div class="pill">Liquidity sweep only</div><div class="pill">EMA 9/21 context</div><div class="pill">BOS structure</div><div class="pill">Liquidity zones</div><div class="pill">ATR-based SL</div></section>
 
@@ -97,12 +101,19 @@ async function getBars(symbol,tf){
  if(mapped.length<30)throw Error('Data ya candles haijakamilika kwa '+symbol);
  const value={bars:mapped,source:'Deriv public candles · '+symbol,stamp:new Date(mapped.at(-1).t).toLocaleString()};barCache.set(cacheKey,{at:Date.now(),value});return value;
 }
-function addHistory(item){let h=JSON.parse(localStorage.getItem('grancelHistory')||'[]');h.unshift(item);h=h.slice(0,25);localStorage.setItem('grancelHistory',JSON.stringify(h));renderHistory()}
+function addHistory(item){let h=JSON.parse(localStorage.getItem('grancelHistory')||'[]');const key=x=>[x.market,x.tf,x.candleTime,x.side].join('|');if(h.some(x=>key(x)===key(item)))return;h.unshift(item);h=h.slice(0,1000);localStorage.setItem('grancelHistory',JSON.stringify(h));renderHistory()}
+function marketGroup(x){const s=String(x.market||x.symbol||'').toUpperCase();if(s.includes('BTC'))return 'btc';if(s.includes('XAU')||s.includes('GOLD'))return 'xau';return 'other';}
+function setGroupStats(prefix,items){
+ const wins=items.filter(x=>x.status==='TP HIT').length,losses=items.filter(x=>x.status==='SL HIT').length,active=items.filter(x=>x.status==='ACTIVE').length,closed=wins+losses,net=items.reduce((a,x)=>a+(Number(x.resultPoints)||0),0);
+ $(prefix+'Total').textContent=items.length;$(prefix+'Wins').textContent=wins;$(prefix+'Losses').textContent=losses;$(prefix+'Active').textContent=active;$(prefix+'Rate').textContent=closed?(wins/closed*100).toFixed(1)+'%':'—';$(prefix+'Net').textContent=(net>=0?'+':'')+net.toFixed(2);$(prefix+'Net').style.color=net>0?'var(--green)':net<0?'var(--red)':'var(--txt)';
+}
 function getHistory(){return JSON.parse(localStorage.getItem('grancelHistory')||'[]')}
 function saveHistory(h){localStorage.setItem('grancelHistory',JSON.stringify(h))}
 function renderStats(){
- const h=getHistory(),wins=h.filter(x=>x.status==='TP HIT').length,losses=h.filter(x=>x.status==='SL HIT').length,active=h.filter(x=>x.status==='ACTIVE').length,expired=h.filter(x=>x.status==='EXPIRED').length,unverified=h.filter(x=>x.status==='UNVERIFIED').length,closed=wins+losses,net=h.reduce((a,x)=>a+(x.status==='TP HIT'?Number(x.resultPoints||0):x.status==='SL HIT'?Number(x.resultPoints||0):0),0);
- $('statTotal').textContent=h.length;$('statWins').textContent=wins;$('statLosses').textContent=losses;$('statActive').textContent=active;$('statExpired').textContent=expired;$('statUnverified').textContent=unverified;$('statWinRate').textContent=closed?(wins/closed*100).toFixed(1)+'%':'—';$('statNet').textContent=(net>=0?'+':'')+net.toFixed(2);$('statNet').style.color=net>0?'var(--green)':net<0?'var(--red)':'var(--txt)';
+ const h=getHistory();
+ setGroupStats('btc',h.filter(x=>marketGroup(x)==='btc'));
+ setGroupStats('xau',h.filter(x=>marketGroup(x)==='xau'));
+ setGroupStats('other',h.filter(x=>marketGroup(x)==='other'));
 }
 function renderHistory(){
  let h=getHistory();
@@ -206,6 +217,7 @@ async function scanAllMarkets(){
      if(candles.length<30){errors++;continue;}
      const bars=candles.slice(0,-1).map(x=>({t:Number(x.epoch)*1000,o:+x.open,h:+x.high,l:+x.low,c:+x.close})).filter(x=>[x.t,x.o,x.h,x.l,x.c].every(Number.isFinite));
      if(bars.length<30){errors++;continue;}
+     evaluateHistory(bars,item.symbol,tf);
      const last=bars.at(-1),prev=bars.at(-2),av=atr(bars),setup=detectSweepSetup(bars);
      let side=setup.side;
      if(side!=='WAIT'){
@@ -220,7 +232,11 @@ async function scanAllMarkets(){
        if(!Number.isFinite(tp)){tp=entry-Math.max(av*.5,pad*2);tpMethod='ATR';}
        dist=sl-entry;if(!(sl>entry&&tp<entry&&dist>0))side='WAIT';
       }
-      if(side!=='WAIT'){found.push({symbol:item.symbol,name:item.name,side,tf,entry,sl,tp,tpMethod,time:last.t});renderFound();}
+      if(side!=='WAIT'){
+      const signalItem={side,market:item.symbol,tf,entry:nfmt(entry),sl:nfmt(sl),tp:nfmt(tp),time:new Date(last.t).toLocaleString(),candleTime:last.t,status:'ACTIVE'};
+      addHistory(signalItem);
+      found.push({symbol:item.symbol,name:item.name,side,tf,entry,sl,tp,tpMethod,time:last.t});renderFound();
+     }
      }
     }catch(e){errors++;}
     checked++;
