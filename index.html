@@ -189,7 +189,9 @@ async function refreshLivePrice(){
 }
 async function scanAllMarkets(){
  const btn=$('scanAll'),out=$('scanResults'),status=$('scanStatus'),tfs=['M1','M5','M15','H1'];
- btn.disabled=true;btn.textContent='SCANNING…';out.innerHTML='';let found=[],checked=0,errors=0;
+ btn.disabled=true;btn.textContent='SCANNING…';let found=[],checked=0,errors=0;
+ const renderFound=()=>{const sorted=found.slice().sort((a,b)=>b.time-a.time);out.innerHTML=sorted.length?sorted.map(x=>'<div class="metric" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b class="'+(x.side==='BUY'?'buy':'sell')+'">'+x.side+' · '+x.tf+'</b><b>'+x.name+'</b></div><div class="small">Entry: '+nfmt(x.entry)+' · SL: '+nfmt(x.sl)+' · TP: '+nfmt(x.tp)+'</div><div class="small">'+new Date(x.time).toLocaleString()+' · TP '+x.tpMethod+'</div></div>').join(''):'<div class="metric">Bado hakuna entry iliyopatikana. Matokeo yataonekana hapa moja kwa moja scan ikiendelea.</div>';};
+ out.innerHTML='<div class="metric">Scan inaanza… entries zitaonekana hapa moja kwa moja zikigunduliwa.</div>';
  try{
   await ensureDerivConnection();
   const symbols=derivSymbols.slice(),total=symbols.length*tfs.length;
@@ -218,7 +220,7 @@ async function scanAllMarkets(){
        if(!Number.isFinite(tp)){tp=entry-Math.max(av*.5,pad*2);tpMethod='ATR';}
        dist=sl-entry;if(!(sl>entry&&tp<entry&&dist>0))side='WAIT';
       }
-      if(side!=='WAIT')found.push({symbol:item.symbol,name:item.name,side,tf,entry,sl,tp,tpMethod,time:last.t});
+      if(side!=='WAIT'){found.push({symbol:item.symbol,name:item.name,side,tf,entry,sl,tp,tpMethod,time:last.t});renderFound();}
      }
     }catch(e){errors++;}
     checked++;
@@ -226,9 +228,7 @@ async function scanAllMarkets(){
     if(checked%4===0)await new Promise(r=>setTimeout(r,180));
    }
   }
-  found.sort((a,b)=>b.time-a.time);
-  if(!found.length)out.innerHTML='<div class="metric">Hakuna setup iliyokidhi rule ya sweep kwenye M1/M5/M15/H1. Checks: '+checked+'.</div>';
-  else out.innerHTML=found.map(x=>'<div class="metric" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b class="'+(x.side==='BUY'?'buy':'sell')+'">'+x.side+' · '+x.tf+'</b><b>'+x.name+'</b></div><div class="small">Entry: '+nfmt(x.entry)+' · SL: '+nfmt(x.sl)+' · TP: '+nfmt(x.tp)+'</div><div class="small">'+new Date(x.time).toLocaleString()+' · TP '+x.tpMethod+'</div></div>').join('');
+  renderFound();
   status.textContent='Scan complete · '+checked+'/'+total+' checks · '+found.length+' entries · '+errors+' data errors.';
  }catch(e){status.textContent='Scan failed: '+e.message;out.textContent='Hakuna matokeo yaliyopatikana.';}
  finally{btn.disabled=false;btn.textContent='SCAN ALL MARKETS';}
