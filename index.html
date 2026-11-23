@@ -104,7 +104,6 @@ async function getBars(symbol,tf){
 function addHistory(item){
  let h=getHistory(),key=x=>[x.market,x.tf,x.candleTime,x.side].join('|');
  if(h.some(x=>key(x)===key(item)))return false;
- if(h.some(x=>x.status==='ACTIVE'))return false;
  h.unshift(item);h=h.slice(0,1000);saveHistory(h);renderHistory();return true;
 }
 function hasActiveSignal(){return getHistory().some(x=>x.status==='ACTIVE')}
@@ -238,7 +237,7 @@ async function scanMarketsOnce(){
        if(!Number.isFinite(tp)){tp=entry-Math.max(av*.5,pad*2);tpMethod='ATR';}
        dist=sl-entry;if(!(sl>entry&&tp<entry&&dist>0))side='WAIT';
       }
-      if(side!=='WAIT'&&!hasActiveSignal()){
+      if(side!=='WAIT'){
       const signalItem={side,market:item.symbol,tf,entry:nfmt(entry),sl:nfmt(sl),tp:nfmt(tp),time:new Date(last.t).toLocaleString(),candleTime:last.t,status:'ACTIVE'};
       if(addHistory(signalItem)){
        found.push({symbol:item.symbol,name:item.name,side,tf,entry,sl,tp,tpMethod,time:last.t});renderFound();
@@ -253,7 +252,7 @@ async function scanMarketsOnce(){
    }
   }
   renderFound();
-  status.textContent='Scan cycle complete · '+checked+'/'+total+' checks · '+found.length+' new entries · '+(hasActiveSignal()?'1 active signal is being tracked':'No active signal')+' · '+errors+' data errors.';
+  status.textContent='Scan cycle complete · '+checked+'/'+total+' checks · '+found.length+' new entries · '+(getHistory().filter(x=>x.status==='ACTIVE').length+' active signals being tracked')+' · '+errors+' data errors.';
  }catch(e){status.textContent='Scan failed: '+e.message;out.textContent='Hakuna matokeo yaliyopatikana.';}
  finally{}
 }
@@ -261,7 +260,7 @@ let autoScanEnabled=false,scanCycleBusy=false;
 async function scanAllMarkets(){
  autoScanEnabled=!autoScanEnabled;
  const btn=$('scanAll');
- if(!autoScanEnabled){btn.textContent='START AUTO SCAN';$('scanStatus').textContent='Auto scan imesimamishwa. Signal ACTIVE itaendelea kuonekana kwenye dashboard.';return;}
+ if(!autoScanEnabled){btn.textContent='START AUTO SCAN';$('scanStatus').textContent='Auto scan imesimamishwa. Signals zote ACTIVE zitaendelea kuonekana kwenye dashboard.';return;}
  btn.textContent='STOP AUTO SCAN';
  while(autoScanEnabled){
   if(!scanCycleBusy){
