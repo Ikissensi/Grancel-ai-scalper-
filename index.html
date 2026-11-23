@@ -17,7 +17,7 @@
 <section class="card"><label>ANALYSIS REASONS</label><ul id="reasons"><li>Press ANALYZE to retrieve candles.</li></ul></section>
 <section class="card"><label>PERFORMANCE TRACKER</label><div class="stats"><div class="stat"><span>TOTAL SIGNALS</span><b id="statTotal">0</b></div><div class="stat"><span>WINNING · TP HIT</span><b id="statWins">0</b></div><div class="stat"><span>LOSING · SL HIT</span><b id="statLosses">0</b></div><div class="stat"><span>ACTIVE</span><b id="statActive">0</b></div><div class="stat"><span>EXPIRED</span><b id="statExpired">0</b></div><div class="stat"><span>UNVERIFIED OLD</span><b id="statUnverified">0</b></div><div class="stat"><span>WIN RATE</span><b id="statWinRate">—</b></div></div><div class="metric"><span class="small">NET RESULT · CLOSED SIGNALS (PRICE POINTS)</span><b id="statNet">0.00</b></div><p class="notice">TP/SL results are checked against subsequent closed BTC candles. If TP and SL are both touched in the same candle, the tracker counts SL first (conservative). Signals expire after 100 closed candles without TP or SL. This is candle-based tracking, not exchange execution or account P/L.</p></section>\n<section class="card"><div class="row" style="justify-content:space-between"><label style="margin:0">SIGNAL HISTORY</label><button id="clear" style="width:auto;padding:7px 11px;font-size:11px">CLEAR</button></div><div id="history" class="small muted" style="margin-top:10px">No confirmed signals saved.</div></section>
 <section class="card"><label>ALERTS</label><div class="row"><button id="notify" style="flex:1">ENABLE NOTIFICATIONS</button><span class="pill" id="notifyState">Off</span></div><p class="notice">Alerts fire as soon as a completed M1/M5 candle confirms the setup, while this page is open and notifications are allowed. Android may pause background tabs; keep this page active for fastest alerts.</p></section>
-<section class="card"><label>IMPORTANT — DATA & RISK</label><div class="notice">BTC/USD uses Deriv public candles and live WebSocket tick stream. Confirm the Deriv symbol, candle time and quote before using any setup. This app only analyzes and sends signals; it does not place trades. When WAIT is shown, Entry/SL/TP are indicative reference levels only, not an active trade setup. Signals are not guaranteed profits. Always check spread, news, slippage and position size.</div><div class="pill">M1 / M5</div><div class="pill">Liquidity sweep</div><div class="pill">Liquidity sweep only</div><div class="pill">EMA 9/21 context</div><div class="pill">BOS structure</div><div class="pill">Liquidity zones</div><div class="pill">ATR-based SL</div></section>
+<section class="card"><label>IMPORTANT — DATA & RISK</label><div class="notice">All selected instruments use Deriv candles and live ticks. Dropdown lists only currently open, non-suspended symbols returned by Deriv. This app only analyzes and sends signals; it does not place trades. When WAIT is shown, Entry/SL/TP are indicative reference levels only, not an active trade setup. Signals are not guaranteed profits. Always check spread, news, slippage and position size.</div><div class="pill">M1 / M5</div><div class="pill">Liquidity sweep</div><div class="pill">Liquidity sweep only</div><div class="pill">EMA 9/21 context</div><div class="pill">BOS structure</div><div class="pill">Liquidity zones</div><div class="pill">ATR-based SL</div></section>
 
 </main><footer>GRANCEL AI SCALPER V2 • Deriv market-data analysis only — does not place trades</footer>
 
@@ -59,29 +59,13 @@ function calcRSI(c,p=14){let g=0,l=0;for(let i=c.length-p;i<c.length;i++){let d=
 function atr(b,p=14){let s=0;for(let i=b.length-p;i<b.length;i++)s+=Math.max(b[i].h-b[i].l,Math.abs(b[i].h-b[i-1].c),Math.abs(b[i].l-b[i-1].c));return s/p}
 const barCache=new Map();
 async function getBars(symbol,tf){
- const cacheKey=symbol+'_'+tf, cached=barCache.get(cacheKey);
- if(cached&&Date.now()-cached.at<5000)return cached.value;
- if(symbol==='DERIV_BTCUSD'){
-  const derivSymbol=await ensureDerivConnection();
-  const granularity={M1:60,M5:300,M15:900,H1:3600}[tf]||300;
-  const payload=await derivRequest({ticks_history:derivSymbol,count:1000,end:'latest',style:'candles',granularity});
-  const candles=payload.candles||[];
-  if(candles.length<30)throw Error('Deriv returned fewer than 30 BTC/USD candles.');
-  const mapped=candles.slice(0,-1).map(x=>({t:Number(x.epoch)*1000,o:+x.open,h:+x.high,l:+x.low,c:+x.close})).filter(x=>[x.t,x.o,x.h,x.l,x.c].every(Number.isFinite));
-  if(mapped.length<30)throw Error('Deriv candle data is incomplete.');
-  const value={bars:mapped,source:'Deriv public BTC/USD candles · '+derivSymbol,stamp:new Date(mapped.at(-1).t).toLocaleString()};
-  barCache.set(cacheKey,{at:Date.now(),value});return value;
-}
- let d=new Date(),to=d.toISOString().slice(0,10);d.setDate(d.getDate()-2);let from=d.toISOString().slice(0,10);
- let apiSymbols=symbol==='XAUUSD'?['XAUUSD']:[symbol,symbol+'M'];let lastError='';
- for(const apiSymbol of apiSymbols){try{
- let r=await fetch(`https://www.algospecial.com/api/ohlc.php?symbol=${apiSymbol}&tf=${tf}&from=${from}&to=${to}&format=json`,{cache:'no-store'});if(!r.ok){let detail='';try{detail=(await r.text()).slice(0,140)}catch(_){};throw Error('API '+r.status+' for '+apiSymbol+(r.status===429?' (rate limit; retry shortly)':r.status===404?' (symbol/timeframe dataset not found)':'')+(detail?' — '+detail:''));}
- let j=await r.json(),a=j.data||j.bars||j.result;if(!Array.isArray(a)||a.length<30)throw Error('API returned fewer than 30 candles for '+apiSymbol);
- let bars=a.map(x=>{let raw=x.Timestamp||x.timestamp||x.time||x.datetime||x.date||x.t;let parsed=typeof raw==='number'?(raw<1e12?raw*1000:raw):Date.parse(String(raw).replace(/\./g,'-'));return {t:parsed,o:+(x.Open??x.open??x.o),h:+(x.High??x.high??x.h),l:+(x.Low??x.low??x.l),c:+(x.Close??x.close??x.c)}}).filter(x=>Number.isFinite(x.t)&&[x.o,x.h,x.l,x.c].every(Number.isFinite)).sort((x,y)=>x.t-y.t);
- if(bars.length<30)throw Error('Candle format invalid for '+apiSymbol);
- let value={bars,source:(symbol==='XAUUSD'?'AlgoSpecial Gold OHLC preview':'AlgoSpecial Forex OHLC preview · '+apiSymbol)+' — not broker live quotes',stamp:new Date(bars.at(-1).t).toLocaleString()};barCache.set(cacheKey,{at:Date.now(),value});return value;
- }catch(e){lastError=e.message}}
- throw Error(symbol+' feed unavailable: '+lastError);
+ const cacheKey=symbol+'_'+tf,cached=barCache.get(cacheKey);if(cached&&Date.now()-cached.at<5000)return cached.value;
+ await ensureDerivConnection();const granularity={M1:60,M5:300,M15:900,H1:3600}[tf]||300;
+ const payload=await derivRequest({ticks_history:symbol,count:1000,end:'latest',style:'candles',granularity});if(payload.error)throw new Error(payload.error.message);
+ const candles=payload.candles||[];if(candles.length<30)throw Error('Deriv imerudisha candles chini ya 30 kwa '+symbol);
+ const mapped=candles.slice(0,-1).map(x=>({t:Number(x.epoch)*1000,o:+x.open,h:+x.high,l:+x.low,c:+x.close})).filter(x=>[x.t,x.o,x.h,x.l,x.c].every(Number.isFinite));
+ if(mapped.length<30)throw Error('Data ya candles haijakamilika kwa '+symbol);
+ const value={bars:mapped,source:'Deriv public candles · '+symbol,stamp:new Date(mapped.at(-1).t).toLocaleString()};barCache.set(cacheKey,{at:Date.now(),value});return value;
 }
 function addHistory(item){let h=JSON.parse(localStorage.getItem('grancelHistory')||'[]');h.unshift(item);h=h.slice(0,25);localStorage.setItem('grancelHistory',JSON.stringify(h));renderHistory()}
 function getHistory(){return JSON.parse(localStorage.getItem('grancelHistory')||'[]')}
@@ -117,80 +101,61 @@ function evaluateHistory(bars,market,tf){
  renderHistory();
 }
 function notifySignal(title,body){if(navigator.vibrate)navigator.vibrate([250,100,250]);if('Notification'in window&&Notification.permission==='granted')new Notification(title,{body,tag:title+Date.now(),requireInteraction:true});}
-let derivSocket=null,derivConnectPromise=null,derivSymbol='',derivReqId=10,derivWaiters=new Map(),lastLivePrice=null,lastDerivBucket=null,analysisBusy=false,rerunPending=false;
-function derivRequest(payload,timeout=12000){
+const DERIV_APP_ID='352MfaVswSnhnpnvvlicc';
+let derivSocket=null,derivConnectPromise=null,derivReqId=10,derivWaiters=new Map(),derivSymbols=[],activeTickSymbol='',lastLivePrice=null,lastDerivBucket=null,analysisBusy=false,rerunPending=false;
+function derivRequest(payload,timeout=15000){
  return new Promise((resolve,reject)=>{
-  if(!derivSocket||derivSocket.readyState!==WebSocket.OPEN){reject(new Error('Deriv WebSocket is not connected'));return;}
+  if(!derivSocket||derivSocket.readyState!==WebSocket.OPEN){reject(new Error('Deriv WebSocket haijaunganishwa'));return;}
   const req_id=++derivReqId,timer=setTimeout(()=>{derivWaiters.delete(req_id);reject(new Error('Deriv request timeout'));},timeout);
   derivWaiters.set(req_id,{resolve,reject,timer});derivSocket.send(JSON.stringify({...payload,req_id}));
  });
 }
+function populateDerivMarkets(list){
+ const select=$('market');
+ const active=list.map(x=>({symbol:x.symbol||x.underlying_symbol,name:x.display_name||x.underlying_symbol_name||x.symbol||x.underlying_symbol,market:x.market||'other',open:Number(x.exchange_is_open)===1,suspended:Number(x.is_trading_suspended)===1})).filter(x=>x.symbol&&!x.suspended&&x.open);
+ const unique=[...new Map(active.map(x=>[x.symbol,x])).values()];
+ if(!unique.length)throw new Error('Deriv haijarudisha instrument zilizo wazi na zinazoweza kutrade sasa.');
+ const groups=[['Cryptocurrencies',x=>/crypto/i.test(x.market)],['Forex',x=>/forex/i.test(x.market)],['Commodities',x=>/commodit/i.test(x.market)],['Stock indices',x=>/index|indices/i.test(x.market)],['Derived / Synthetic indices',x=>/synthetic|derived/i.test(x.market)],['Other active markets',x=>true]];
+ select.innerHTML='';
+ for(const [label,test] of groups){const items=unique.filter(test);if(!items.length)continue;const og=document.createElement('optgroup');og.label=label;items.sort((a,b)=>a.name.localeCompare(b.name)).forEach(x=>{const op=document.createElement('option');op.value=x.symbol;op.textContent=x.name+' · '+x.symbol;og.appendChild(op)});select.appendChild(og);}
+ const preferred=unique.find(x=>/BTCUSD|BTC\/USD/i.test(x.symbol+' '+x.name))||unique.find(x=>/bitcoin/i.test(x.name));
+ if(preferred)select.value=preferred.symbol;
+ derivSymbols=unique;$('feednote').textContent='DERIV CONNECTED · '+unique.length+' active instruments loaded. Dropdown inaonyesha masoko yaliyo wazi na yasiyosimamishwa sasa.';
+}
+function subscribeSelectedTick(){
+ const symbol=$('market').value;
+ if(!symbol||!derivSocket||derivSocket.readyState!==WebSocket.OPEN||activeTickSymbol===symbol)return;
+ if(activeTickSymbol)derivSocket.send(JSON.stringify({forget:'ticks',symbol:activeTickSymbol,req_id:++derivReqId}));
+ activeTickSymbol=symbol;lastLivePrice=null;lastDerivBucket=null;
+ derivSocket.send(JSON.stringify({ticks:symbol,subscribe:1,req_id:++derivReqId}));
+ $('priceinfo').textContent='Connecting Deriv live tick · '+symbol;
+}
 function ensureDerivConnection(){
- if(derivSymbol&&derivSocket&&derivSocket.readyState===WebSocket.OPEN)return Promise.resolve(derivSymbol);
+ if(derivSocket&&derivSocket.readyState===WebSocket.OPEN&&derivSymbols.length)return Promise.resolve(derivSymbols);
  if(derivConnectPromise)return derivConnectPromise;
  derivConnectPromise=new Promise((resolve,reject)=>{
-  try{derivSocket=new WebSocket('wss://api.derivws.com/trading/v1/options/ws/public');}
-  catch(e){derivConnectPromise=null;reject(e);return;}
-  const timeout=setTimeout(()=>{derivConnectPromise=null;reject(new Error('Deriv connection timed out'));},15000);
-  derivSocket.onopen=()=>{derivRequest({active_symbols:'full'}).then(data=>{
-    clearTimeout(timeout);
-    const list=data.active_symbols||data.data?.active_symbols||[];
-    const candidates=list.filter(x=>/BTC|BITCOIN/i.test([x.symbol,x.display_name,x.market,x.market_display_name,x.submarket,x.submarket_display_name].filter(Boolean).join(' ')));
-    const exact=candidates.find(x=>/BTC\\s*\\/\\s*USD|BTCUSD|BITCOIN\\s*\\/\\s*USD/i.test([x.display_name,x.symbol].filter(Boolean).join(' ')));
-    const chosen=exact||candidates.find(x=>/BTC|BITCOIN/i.test([x.symbol,x.display_name].filter(Boolean).join(' ')));
-    if(!chosen){const sample=list.slice(0,12).map(x=>(x.symbol||'?')+':'+(x.display_name||'?')).join(', ');reject(new Error('BTC haijaonekana kwenye '+list.length+' Deriv symbols. Mfano: '+sample));return;}
-    derivSymbol=chosen.symbol;
-    derivSocket.send(JSON.stringify({ticks:derivSymbol,subscribe:1,req_id:++derivReqId}));
-    $('feednote').textContent='DERIV LIVE FEED CONNECTED · '+(chosen.display_name||derivSymbol)+' · '+derivSymbol;
-    resolve(derivSymbol);
-   }).catch(e=>{clearTimeout(timeout);reject(e);});};
+  try{derivSocket=new WebSocket('wss://ws.derivws.com/websockets/v3?app_id='+DERIV_APP_ID);}catch(e){reject(e);return;}
+  const timeout=setTimeout(()=>reject(new Error('Deriv connection timeout')),18000);
+  derivSocket.onopen=()=>derivRequest({active_symbols:'full'}).then(data=>{
+   clearTimeout(timeout);if(data.error)throw new Error(data.error.message);
+   populateDerivMarkets(data.active_symbols||[]);subscribeSelectedTick();resolve(derivSymbols);
+  }).catch(e=>{clearTimeout(timeout);reject(e);});
   derivSocket.onmessage=ev=>{try{
-    const d=JSON.parse(ev.data);
-    if(d.req_id&&derivWaiters.has(d.req_id)){const w=derivWaiters.get(d.req_id);clearTimeout(w.timer);derivWaiters.delete(d.req_id);if(d.error)w.reject(new Error(d.error.message||'Deriv API error'));else w.resolve(d);return;}
-    if(d.msg_type==='tick'&&d.tick){const p=+d.tick.quote,epoch=+d.tick.epoch;if(Number.isFinite(p)){const el=$('price');el.textContent=nfmt(p);el.style.color=lastLivePrice===null?'var(--txt)':p>lastLivePrice?'var(--green)':p<lastLivePrice?'var(--red)':'var(--txt)';lastLivePrice=p;$('priceinfo').textContent='Deriv '+derivSymbol+' · live tick · '+new Date(epoch*1000).toLocaleTimeString();
-      const tf=$('tf').value,seconds=tf==='M1'?60:tf==='M5'?300:tf==='M15'?900:3600,bucket=Math.floor(epoch/seconds);
-      if(lastDerivBucket!==null&&bucket!==lastDerivBucket){barCache.delete('DERIV_BTCUSD_'+tf);analyze();}
-      lastDerivBucket=bucket;
-    }}
-   }catch(e){}};
-  derivSocket.onerror=()=>{$('feednote').textContent='Deriv connection error. Check internet and reload.';};
-  derivSocket.onclose=()=>{derivSocket=null;derivSymbol='';derivConnectPromise=null;};
+   const d=JSON.parse(ev.data);
+   if(d.req_id&&derivWaiters.has(d.req_id)){const w=derivWaiters.get(d.req_id);clearTimeout(w.timer);derivWaiters.delete(d.req_id);if(d.error)w.reject(new Error(d.error.message||'Deriv API error'));else w.resolve(d);return;}
+   if(d.msg_type==='tick'&&d.tick&&d.tick.symbol===$('market').value){const p=+d.tick.quote,epoch=+d.tick.epoch;if(Number.isFinite(p)){
+    const el=$('price');el.textContent=nfmt(p);el.style.color=lastLivePrice===null?'var(--txt)':p>lastLivePrice?'var(--green)':p<lastLivePrice?'var(--red)':'var(--txt)';lastLivePrice=p;$('priceinfo').textContent='Deriv '+d.tick.symbol+' · live tick · '+new Date(epoch*1000).toLocaleTimeString();
+    const tf=$('tf').value,seconds=tf==='M1'?60:tf==='M5'?300:tf==='M15'?900:3600,bucket=Math.floor(epoch/seconds);if(lastDerivBucket!==null&&bucket!==lastDerivBucket){barCache.delete(d.tick.symbol+'_'+tf);analyze();}lastDerivBucket=bucket;
+   }}
+  }catch(e){}};
+  derivSocket.onerror=()=>{$('feednote').textContent='Deriv connection error. Angalia internet kisha refresh.';};
+  derivSocket.onclose=()=>{derivSocket=null;derivConnectPromise=null;derivSymbols=[];activeTickSymbol='';};
  }).catch(e=>{derivConnectPromise=null;throw e;});
  return derivConnectPromise;
 }
 async function refreshLivePrice(){
- if($('market').value!=='DERIV_BTCUSD')return;
- try{await ensureDerivConnection();if(lastLivePrice===null){const {bars}=await getBars('DERIV_BTCUSD',$('tf').value);const p=bars.at(-1)?.c;if(Number.isFinite(p)){$('price').textContent=nfmt(p);$('priceinfo').textContent='Deriv '+derivSymbol+' · latest closed candle';}}}
- catch(e){$('price').textContent='—';$('priceinfo').textContent='Deriv BTC/USD feed unavailable · '+e.message;$('feednote').textContent='No live Deriv quote received. Do not use old prices.';}
-}
-function connectBinanceStream(){
- if(btcSocket&&(btcSocket.readyState===WebSocket.OPEN||btcSocket.readyState===WebSocket.CONNECTING))return;
- try{btcSocket=new WebSocket('wss://stream.binance.com:9443/stream?streams=btcusdt@trade/btcusdt@kline_1m/btcusdt@kline_5m');}catch(e){$('feednote').textContent='Live stream connection failed; REST fallback active.';return;}
- btcSocket.onopen=()=>{$('feednote').textContent='LIVE STREAM CONNECTED · BTC price updates instantly; signals checked at selected candle close.';};
- btcSocket.onmessage=(ev)=>{try{const msg=JSON.parse(ev.data),d=msg.data;if(msg.stream==='btcusdt@trade'){const p=+d.p;if(Number.isFinite(p)){const el=$('price');el.textContent=nfmt(p);el.style.color=lastLivePrice===null?'var(--txt)':p>lastLivePrice?'var(--green)':p<lastLivePrice?'var(--red)':'var(--txt)';lastLivePrice=p;$('priceinfo').textContent='BTCUSDT · Binance live trade · '+new Date(d.T).toLocaleTimeString();}}else if(d.e==='kline'&&d.k.x){const tf=d.k.i==='1m'?'M1':d.k.i==='5m'?'M5':null;if(tf===$('tf').value){barCache.delete('BTCUSDT_'+tf);analyze();}}}catch(e){}};
- btcSocket.onerror=()=>{$('feednote').textContent='Live stream interrupted; reconnecting. REST fallback active.';};
- btcSocket.onclose=()=>{btcSocket=null;clearTimeout(btcReconnectTimer);btcReconnectTimer=setTimeout(connectBinanceStream,2500);};
-}
-async function refreshLivePrice(){
- if($('market').value!=='BTCUSDT')return;
- const sources=[
-  async()=>{let r=await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT',{cache:'no-store'});if(!r.ok)throw Error('Binance '+r.status);let j=await r.json();return {price:+j.price,name:'Binance BTCUSDT'}},
-  async()=>{let r=await fetch('https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT',{cache:'no-store'});if(!r.ok)throw Error('Binance backup '+r.status);let j=await r.json();return {price:+j.price,name:'Binance backup BTCUSDT'}}
- ];
- let issue=null;
- for(const get of sources){
-  try{
-   const q=await get();
-   if(!Number.isFinite(q.price)||q.price<=0)throw Error('Invalid price response');
-   $('price').textContent=q.price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-   $('priceinfo').textContent='BTCUSDT · '+q.name+' · Updated '+new Date().toLocaleTimeString();
-   $('feednote').textContent='Binance WebSocket live price stream; selected timeframe signal checks immediately when candle closes. REST fallback available.';
-   return;
-  }catch(e){issue=e}
- }
- $('price').textContent='—';
- $('priceinfo').textContent='BTC live feed unavailable · '+(issue?.message||'connection error');
- $('feednote').textContent='No fresh BTC price received. Check internet and retry; do not trade using old prices.';
+ try{await ensureDerivConnection();subscribeSelectedTick();if(lastLivePrice===null){const {bars}=await getBars($('market').value,$('tf').value);const p=bars.at(-1)?.c;if(Number.isFinite(p)){$('price').textContent=nfmt(p);$('priceinfo').textContent='Deriv '+$('market').value+' · latest closed candle';}}}
+ catch(e){$('price').textContent='—';$('priceinfo').textContent='Deriv feed unavailable · '+e.message;$('feednote').textContent=e.message;}
 }
 async function analyze(){
  if(analysisBusy){rerunPending=true;return;}analysisBusy=true;$('status').textContent='Checking latest closed candle…';
@@ -209,7 +174,7 @@ async function analyze(){
  drawGrChart(bars,market,tf,side);$('price').textContent=nfmt(last.c);$('priceinfo').textContent=`${market} · ${tf} · Candle time: ${stamp}`;$('feednote').textContent=source;
  $('rsi').textContent=rv.toFixed(1);$('ema').textContent=fast>slow?'Bullish':'Bearish';$('structure').textContent=sweepLow?'LOW SWEEP':sweepHigh?'HIGH SWEEP':'NO SWEEP';$('count').textContent=bars.length;
  $('signal').textContent=side;$('signal').className='signal '+(side==='BUY'?'buy':side==='SELL'?'sell':'wait');
- $('signalinfo').textContent=side==='WAIT'?'Direction NOT confirmed. Deriv public BTC/USD feed is connected. Confirm it matches the exact BTC/USD instrument on your Deriv trading platform before using a signal.':'Entry after rejection candle closes. SL/TP are direction-validated.';
+ $('signalinfo').textContent=side==='WAIT'?'Direction NOT confirmed. Deriv live market feed. Confirm the selected symbol matches the instrument on your Deriv trading platform before using a signal.':'Entry after rejection candle closes. SL/TP are direction-validated.';
  let entry=last.c,sl,tp,dist=0;
  let levelSide=side;
  const bodyLow=Math.min(previous.o,previous.c),bodyHigh=Math.max(previous.o,previous.c),bodySize=bodyHigh-bodyLow;
@@ -235,9 +200,9 @@ async function analyze(){
  $('reasons').innerHTML=why.map(x=>`<li>${x}</li>`).join('');$('status').textContent='Analysis complete · '+new Date().toLocaleTimeString();
  }catch(e){$('status').textContent=e.message+' — check internet or retry.';$('reasons').innerHTML='<li>No signal generated because reliable candle data could not be loaded.</li>';$('priceinfo').textContent='Feed unavailable';$('signalinfo').textContent='No data = no signal. Do not trade using old values.';$('plan').style.display='none'}finally{analysisBusy=false;if(rerunPending){rerunPending=false;setTimeout(analyze,150)}}
 }
-$('analyze').onclick=analyze;$('market').onchange=()=>{analyze();refreshLivePrice()};$('tf').onchange=()=>{barCache.delete('BTCUSDT_'+$('tf').value);analyze();};
+$('analyze').onclick=analyze;$('market').onchange=()=>{subscribeSelectedTick();analyze();refreshLivePrice()};$('tf').onchange=()=>{barCache.delete($('market').value+'_'+$('tf').value);analyze();};
 $('clear').onclick=()=>{localStorage.removeItem('grancelHistory');renderHistory()};
 $('notify').onclick=async()=>{if(!('Notification'in window)){alert('This browser does not support notifications.');return}let p=await Notification.requestPermission();$('notifyState').textContent=p==='granted'?'On':p;$('notify').textContent=p==='granted'?'NOTIFICATIONS ENABLED':'ENABLE NOTIFICATIONS'};
-renderHistory();analyze();refreshLivePrice();ensureDerivConnection().catch(e=>$('feednote').textContent=e.message);setInterval(refreshLivePrice,15000);
+renderHistory();ensureDerivConnection().then(()=>{subscribeSelectedTick();analyze();refreshLivePrice();}).catch(e=>{$('feednote').textContent=e.message;$('status').textContent='Deriv connection failed';});setInterval(refreshLivePrice,15000);
 </script>
 </body></html>
