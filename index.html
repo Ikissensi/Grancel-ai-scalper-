@@ -60,7 +60,7 @@ function atr(b,p=14){let s=0;for(let i=b.length-p;i<b.length;i++)s+=Math.max(b[i
 const barCache=new Map();
 async function getBars(symbol,tf){
  const cacheKey=symbol+'_'+tf, cached=barCache.get(cacheKey);
- if(cached&&Date.now()-cached.at<90000)return cached.value;
+ if(cached&&Date.now()-cached.at<5000)return cached.value;
  if(symbol==='BTCUSDT'){let interval={M1:'1m',M5:'5m',M15:'15m',H1:'1h'}[tf];let r=await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=1000`,{cache:'no-store'});if(!r.ok)throw Error('Binance market feed error: '+r.status);let a=await r.json();let value={bars:a.slice(0,-1).map(x=>({t:+x[0],o:+x[1],h:+x[2],l:+x[3],c:+x[4]})),source:'Binance public candles',stamp:new Date(+a[a.length-2][6]).toLocaleString()};barCache.set(cacheKey,{at:Date.now(),value});return value;}
  let d=new Date(),to=d.toISOString().slice(0,10);d.setDate(d.getDate()-2);let from=d.toISOString().slice(0,10);
  let apiSymbols=symbol==='XAUUSD'?['XAUUSD']:[symbol,symbol+'M'];let lastError='';
@@ -120,8 +120,7 @@ async function refreshLivePrice(){
  if($('market').value!=='BTCUSDT')return;
  const sources=[
   async()=>{let r=await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT',{cache:'no-store'});if(!r.ok)throw Error('Binance '+r.status);let j=await r.json();return {price:+j.price,name:'Binance BTCUSDT'}},
-  async()=>{let r=await fetch('https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT',{cache:'no-store'});if(!r.ok)throw Error('Binance backup '+r.status);let j=await r.json();return {price:+j.price,name:'Binance backup BTCUSDT'}},
-  async()=>{let r=await fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot',{cache:'no-store'});if(!r.ok)throw Error('Coinbase '+r.status);let j=await r.json();return {price:+j.data.amount,name:'Coinbase BTC/USD (USD reference)'}}
+  async()=>{let r=await fetch('https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT',{cache:'no-store'});if(!r.ok)throw Error('Binance backup '+r.status);let j=await r.json();return {price:+j.price,name:'Binance backup BTCUSDT'}}
  ];
  let issue=null;
  for(const get of sources){
@@ -151,17 +150,30 @@ async function analyze(){
  if(sweepLow){side='BUY';why.unshift('BUY: candle ime-sweep LOW ya candle iliyotangulia, kisha ikafunga tena ndani ya range yake.')}
  else if(sweepHigh){side='SELL';why.unshift('SELL: candle ime-sweep HIGH ya candle iliyotangulia, kisha ikafunga tena ndani ya range yake.')}
  else{why.unshift('Hakuna sweep + rejection ya candle iliyotangulia. Subiri candle iliyofungwa.')}
+ // Safety gate: analysis candles/quotes are Binance BTCUSDT, while user's execution chart is Exness BTCUSDm.
+ // Do not publish or alert a trade signal until both feeds are the same broker/instrument.
+ if(side!=='WAIT'){side='WAIT';why.unshift('BROKER FEED MISMATCH: Binance BTCUSDT haiwezi kutumika kama bei halisi ya Exness BTCUSDm. Signal imezuiwa kuzuia Entry/SL/TP kupotosha.');}
  drawGrChart(bars,market,tf,side);$('price').textContent=nfmt(last.c);$('priceinfo').textContent=`${market} · ${tf} · Candle time: ${stamp}`;$('feednote').textContent=source;
  $('rsi').textContent=rv.toFixed(1);$('ema').textContent=fast>slow?'Bullish':'Bearish';$('structure').textContent=sweepLow?'LOW SWEEP':sweepHigh?'HIGH SWEEP':'NO SWEEP';$('count').textContent=bars.length;
  $('signal').textContent=side;$('signal').className='signal '+(side==='BUY'?'buy':side==='SELL'?'sell':'wait');
- $('signalinfo').textContent=side==='WAIT'?'Direction NOT confirmed. Provisional '+(fast>=slow?'BUY':'SELL')+' Entry/SL/TP are displayed for reference only; wait for a liquidity sweep before considering an entry.':'Entry after rejection candle closes. SL just beyond rejection wick; TP inside previous candle body.';
+ $('signalinfo').textContent=side==='WAIT'?'Direction NOT confirmed. Binance BTCUSDT data is not the same quote feed as Exness BTCUSDm on MT5. No trade-ready signal until the execution broker feed is connected.':'Entry after rejection candle closes. SL/TP are direction-validated.';
  let entry=last.c,sl,tp,dist=0;
  let levelSide=side;
  const bodyLow=Math.min(previous.o,previous.c),bodyHigh=Math.max(previous.o,previous.c),bodySize=bodyHigh-bodyLow;
  const pad=Math.max(av*0.10,entry*0.00008);
- if(levelSide==='BUY'){sl=last.l-pad;tp=bodyLow+bodySize*0.75;dist=entry-sl;}
- else if(levelSide==='SELL'){sl=last.h+pad;tp=bodyLow+bodySize*0.25;dist=sl-entry;}
- else {sl=tp=NaN;}
+ let levelError='';
+ if(levelSide==='BUY'){
+   sl=last.l-pad;
+   tp=bodyLow-pad;
+   dist=entry-sl;
+   if(!(sl<entry && tp>entry)) levelError='BUY imekataliwa: hakuna nafasi ya TP/SL iliyo sahihi.';
+ } else if(levelSide==='SELL'){
+   sl=last.h+pad;
+   tp=bodyHigh+pad;
+   dist=sl-entry;
+   if(!(sl>entry && tp<entry)) levelError='SELL imekataliwa: hakuna nafasi ya TP/SL iliyo sahihi.';
+ } else {sl=tp=NaN;}
+ if(levelError){side='WAIT';why.unshift(levelError);$('signal').textContent='WAIT';$('signal').className='signal wait';$('signalinfo').textContent=levelError;}
  $('entryLabel').textContent=side==='WAIT'?'PROVISIONAL ENTRY ('+levelSide+')':'ENTRY';
  $('slLabel').textContent=side==='WAIT'?'PROVISIONAL STOP LOSS':'STOP LOSS';
  $('tpLabel').textContent=side==='WAIT'?'PROVISIONAL TAKE PROFIT':'TP · PREVIOUS BODY';
