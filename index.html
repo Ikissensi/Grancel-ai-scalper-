@@ -35,14 +35,25 @@ function renderHistory(){let h=JSON.parse(localStorage.getItem('grancelHistory')
 function notifySignal(title,body){if('Notification'in window&&Notification.permission==='granted')new Notification(title,{body})}
 async function refreshLivePrice(){
  if($('market').value!=='BTCUSDT')return;
- try{
-  let r=await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT',{cache:'no-store'});
-  if(!r.ok)throw Error('BTC ticker unavailable');
-  let j=await r.json();
-  $('price').textContent=Number(j.price).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-  $('priceinfo').textContent='BTCUSDT · Binance live ticker · '+new Date().toLocaleTimeString();
-  $('feednote').textContent='BTC live price refreshes about every 5 seconds. Candle analysis refreshes every 60 seconds.';
- }catch(e){$('priceinfo').textContent='BTC live ticker unavailable; waiting for retry.'}
+ const sources=[
+  async()=>{let r=await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT',{cache:'no-store'});if(!r.ok)throw Error('Binance '+r.status);let j=await r.json();return {price:+j.price,name:'Binance BTCUSDT'}},
+  async()=>{let r=await fetch('https://api1.binance.com/api/v3/ticker/price?symbol=BTCUSDT',{cache:'no-store'});if(!r.ok)throw Error('Binance backup '+r.status);let j=await r.json();return {price:+j.price,name:'Binance backup BTCUSDT'}},
+  async()=>{let r=await fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot',{cache:'no-store'});if(!r.ok)throw Error('Coinbase '+r.status);let j=await r.json();return {price:+j.data.amount,name:'Coinbase BTC/USD (USD reference)'}}
+ ];
+ let issue=null;
+ for(const get of sources){
+  try{
+   const q=await get();
+   if(!Number.isFinite(q.price)||q.price<=0)throw Error('Invalid price response');
+   $('price').textContent=q.price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+   $('priceinfo').textContent='BTCUSDT · '+q.name+' · Updated '+new Date().toLocaleTimeString();
+   $('feednote').textContent='Live price refreshes every 5 seconds. Candle analysis refreshes every 60 seconds. Coinbase fallback is BTC/USD, not exact USDT.';
+   return;
+  }catch(e){issue=e}
+ }
+ $('price').textContent='—';
+ $('priceinfo').textContent='BTC live feed unavailable · '+(issue?.message||'connection error');
+ $('feednote').textContent='No fresh BTC price received. Check internet and retry; do not trade using old prices.';
 }
 async function analyze(){
  $('status').textContent='Loading candles…';$('signal').textContent='WAIT';$('signal').className='signal wait';$('plan').style.display='none';
