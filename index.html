@@ -33,6 +33,17 @@ async function getBars(symbol,tf){
 function addHistory(item){let h=JSON.parse(localStorage.getItem('grancelHistory')||'[]');h.unshift(item);h=h.slice(0,25);localStorage.setItem('grancelHistory',JSON.stringify(h));renderHistory()}
 function renderHistory(){let h=JSON.parse(localStorage.getItem('grancelHistory')||'[]');$('history').innerHTML=h.length?h.map(x=>`<div class="history"><b style="color:${x.side==='BUY'?'#22c995':'#ff637a'}">${x.side}</b> · ${x.market} ${x.tf}<br>Entry ${x.entry} · SL ${x.sl} · TP ${x.tp}<br><span class="muted">${x.time}</span></div>`).join(''):'No confirmed signals saved.'}
 function notifySignal(title,body){if('Notification'in window&&Notification.permission==='granted')new Notification(title,{body})}
+async function refreshLivePrice(){
+ if($('market').value!=='BTCUSDT')return;
+ try{
+  let r=await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT',{cache:'no-store'});
+  if(!r.ok)throw Error('BTC ticker unavailable');
+  let j=await r.json();
+  $('price').textContent=Number(j.price).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  $('priceinfo').textContent='BTCUSDT · Binance live ticker · '+new Date().toLocaleTimeString();
+  $('feednote').textContent='BTC live price refreshes about every 5 seconds. Candle analysis refreshes every 60 seconds.';
+ }catch(e){$('priceinfo').textContent='BTC live ticker unavailable; waiting for retry.'}
+}
 async function analyze(){
  $('status').textContent='Loading candles…';$('signal').textContent='WAIT';$('signal').className='signal wait';$('plan').style.display='none';
  try{
@@ -58,8 +69,8 @@ async function analyze(){
  $('reasons').innerHTML=why.map(x=>`<li>${x}</li>`).join('');$('status').textContent='Analysis complete · Updated '+new Date().toLocaleTimeString();
  }catch(e){$('status').textContent=e.message+' — check internet or retry.';$('reasons').innerHTML='<li>No signal generated because reliable candle data could not be loaded.</li>';$('price').textContent='—';$('priceinfo').textContent='Feed unavailable';$('signalinfo').textContent='No data = no signal. Do not trade using old values.';$('plan').style.display='none'}
 }
-$('analyze').onclick=analyze;$('market').onchange=analyze;$('tf').onchange=analyze;
+$('analyze').onclick=analyze;$('market').onchange=()=>{analyze();refreshLivePrice()};$('tf').onchange=analyze;
 $('clear').onclick=()=>{localStorage.removeItem('grancelHistory');renderHistory()};
 $('notify').onclick=async()=>{if(!('Notification'in window)){alert('This browser does not support notifications.');return}let p=await Notification.requestPermission();$('notifyState').textContent=p==='granted'?'On':p;$('notify').textContent=p==='granted'?'NOTIFICATIONS ENABLED':'ENABLE NOTIFICATIONS'};
-renderHistory();analyze();setInterval(analyze,60000);
+renderHistory();analyze();refreshLivePrice();setInterval(analyze,60000);setInterval(refreshLivePrice,5000);
 </script></body></html>
