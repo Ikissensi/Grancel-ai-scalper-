@@ -188,49 +188,48 @@ async function refreshLivePrice(){
  catch(e){$('price').textContent='—';$('priceinfo').textContent='Deriv feed unavailable · '+e.message;$('feednote').textContent=e.message;}
 }
 async function scanAllMarkets(){
- const btn=$('scanAll'),out=$('scanResults'),status=$('scanStatus'),tf=$('tf').value;
+ const btn=$('scanAll'),out=$('scanResults'),status=$('scanStatus'),tfs=['M1','M5','M15','H1'];
  btn.disabled=true;btn.textContent='SCANNING…';out.innerHTML='';let found=[],checked=0,errors=0;
  try{
   await ensureDerivConnection();
-  const symbols=derivSymbols.slice();
-  status.textContent='Inachunguza '+symbols.length+' instruments kwenye '+tf+'…';
+  const symbols=derivSymbols.slice(),total=symbols.length*tfs.length;
+  status.textContent='Inachunguza '+symbols.length+' instruments × 4 timeframes…';
   for(let i=0;i<symbols.length;i++){
    const item=symbols[i];
-   try{
-    const payload=await derivRequest({ticks_history:item.symbol,count:120,end:'latest',style:'candles',granularity:tf==='M1'?60:300},12000);
-    const candles=payload.candles||[];
-    if(candles.length<30){errors++;continue;}
-    const bars=candles.slice(0,-1).map(x=>({t:Number(x.epoch)*1000,o:+x.open,h:+x.high,l:+x.low,c:+x.close})).filter(x=>[x.t,x.o,x.h,x.l,x.c].every(Number.isFinite));
-    if(bars.length<30){errors++;continue;}
-    const last=bars.at(-1),prev=bars.at(-2),av=atr(bars);
-    const setup=detectSweepSetup(bars);
-    let side=setup.side;
-    if(side!=='WAIT'){
-     const entry=last.c,pad=Math.max(av*0.10,entry*0.00008);
-     const bodyLow=Math.min(prev.o,prev.c),bodyHigh=Math.max(prev.o,prev.c);
-     let sl,tp,tpMethod='BODY',dist;
-     if(side==='BUY'){
-      sl=last.l-pad;tp=[bodyLow-pad,bodyHigh-pad].find(x=>x>entry);
-      if(!Number.isFinite(tp)){tp=entry+Math.max(av*.5,pad*2);tpMethod='ATR';}
-      dist=entry-sl;
-      if(!(sl<entry&&tp>entry&&dist>0))side='WAIT';
-     }else{
-      sl=last.h+pad;tp=[bodyHigh+pad,bodyLow+pad].find(x=>x<entry);
-      if(!Number.isFinite(tp)){tp=entry-Math.max(av*.5,pad*2);tpMethod='ATR';}
-      dist=sl-entry;
-      if(!(sl>entry&&tp<entry&&dist>0))side='WAIT';
+   for(const tf of tfs){
+    try{
+     const granularity={M1:60,M5:300,M15:900,H1:3600}[tf];
+     const payload=await derivRequest({ticks_history:item.symbol,count:120,end:'latest',style:'candles',granularity},12000);
+     const candles=payload.candles||[];
+     if(candles.length<30){errors++;continue;}
+     const bars=candles.slice(0,-1).map(x=>({t:Number(x.epoch)*1000,o:+x.open,h:+x.high,l:+x.low,c:+x.close})).filter(x=>[x.t,x.o,x.h,x.l,x.c].every(Number.isFinite));
+     if(bars.length<30){errors++;continue;}
+     const last=bars.at(-1),prev=bars.at(-2),av=atr(bars),setup=detectSweepSetup(bars);
+     let side=setup.side;
+     if(side!=='WAIT'){
+      const entry=last.c,pad=Math.max(av*0.10,entry*0.00008),bodyLow=Math.min(prev.o,prev.c),bodyHigh=Math.max(prev.o,prev.c);
+      let sl,tp,tpMethod='BODY',dist;
+      if(side==='BUY'){
+       sl=last.l-pad;tp=[bodyLow-pad,bodyHigh-pad].find(x=>x>entry);
+       if(!Number.isFinite(tp)){tp=entry+Math.max(av*.5,pad*2);tpMethod='ATR';}
+       dist=entry-sl;if(!(sl<entry&&tp>entry&&dist>0))side='WAIT';
+      }else{
+       sl=last.h+pad;tp=[bodyHigh+pad,bodyLow+pad].find(x=>x<entry);
+       if(!Number.isFinite(tp)){tp=entry-Math.max(av*.5,pad*2);tpMethod='ATR';}
+       dist=sl-entry;if(!(sl>entry&&tp<entry&&dist>0))side='WAIT';
+      }
+      if(side!=='WAIT')found.push({symbol:item.symbol,name:item.name,side,tf,entry,sl,tp,tpMethod,time:last.t});
      }
-     if(side!=='WAIT')found.push({symbol:item.symbol,name:item.name,side,entry,sl,tp,tpMethod,time:last.t});
-    }
-   }catch(e){errors++;}
-   checked++;
-   if(i%5===0||i===symbols.length-1)status.textContent='Scanning '+checked+'/'+symbols.length+' · Entries '+found.length+' · Data errors '+errors;
-   if(i%3===2)await new Promise(r=>setTimeout(r,180));
+    }catch(e){errors++;}
+    checked++;
+    if(checked%8===0||checked===total)status.textContent='Scanning '+checked+'/'+total+' checks · Entries '+found.length+' · Data errors '+errors;
+    if(checked%4===0)await new Promise(r=>setTimeout(r,180));
+   }
   }
   found.sort((a,b)=>b.time-a.time);
-  if(!found.length)out.innerHTML='<div class="metric">Hakuna BUY/SELL entry iliyothibitishwa kwenye '+tf+' kwa sasa. Instruments zilizochunguzwa: '+checked+'.</div>';
-  else out.innerHTML=found.map(x=>'<div class="metric" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b class="'+(x.side==='BUY'?'buy':'sell')+'">'+x.side+'</b><b>'+x.name+'</b></div><div class="small">Entry: '+nfmt(x.entry)+' · SL: '+nfmt(x.sl)+' · TP: '+nfmt(x.tp)+'</div><div class="small">TF '+tf+' · '+new Date(x.time).toLocaleString()+' · TP '+x.tpMethod+'</div></div>').join('');
-  status.textContent='Scan complete · '+checked+'/'+symbols.length+' checked · '+found.length+' entries · '+errors+' data errors.';
+  if(!found.length)out.innerHTML='<div class="metric">Hakuna setup iliyokidhi rule ya sweep kwenye M1/M5/M15/H1. Checks: '+checked+'.</div>';
+  else out.innerHTML=found.map(x=>'<div class="metric" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b class="'+(x.side==='BUY'?'buy':'sell')+'">'+x.side+' · '+x.tf+'</b><b>'+x.name+'</b></div><div class="small">Entry: '+nfmt(x.entry)+' · SL: '+nfmt(x.sl)+' · TP: '+nfmt(x.tp)+'</div><div class="small">'+new Date(x.time).toLocaleString()+' · TP '+x.tpMethod+'</div></div>').join('');
+  status.textContent='Scan complete · '+checked+'/'+total+' checks · '+found.length+' entries · '+errors+' data errors.';
  }catch(e){status.textContent='Scan failed: '+e.message;out.textContent='Hakuna matokeo yaliyopatikana.';}
  finally{btn.disabled=false;btn.textContent='SCAN ALL MARKETS';}
 }
