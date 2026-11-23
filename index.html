@@ -101,7 +101,13 @@ async function getBars(symbol,tf){
  if(mapped.length<30)throw Error('Data ya candles haijakamilika kwa '+symbol);
  const value={bars:mapped,source:'Deriv public candles · '+symbol,stamp:new Date(mapped.at(-1).t).toLocaleString()};barCache.set(cacheKey,{at:Date.now(),value});return value;
 }
-function addHistory(item){let h=JSON.parse(localStorage.getItem('grancelHistory')||'[]');const key=x=>[x.market,x.tf,x.candleTime,x.side].join('|');if(h.some(x=>key(x)===key(item)))return;h.unshift(item);h=h.slice(0,1000);localStorage.setItem('grancelHistory',JSON.stringify(h));renderHistory()}
+function addHistory(item){
+ let h=getHistory(),key=x=>[x.market,x.tf,x.candleTime,x.side].join('|');
+ if(h.some(x=>key(x)===key(item)))return false;
+ if(h.some(x=>x.status==='ACTIVE'))return false;
+ h.unshift(item);h=h.slice(0,1000);saveHistory(h);renderHistory();return true;
+}
+function hasActiveSignal(){return getHistory().some(x=>x.status==='ACTIVE')}
 function marketGroup(x){const s=String(x.market||x.symbol||'').toUpperCase();if(s.includes('BTC'))return 'btc';if(s.includes('XAU')||s.includes('GOLD'))return 'xau';return 'other';}
 function setGroupStats(prefix,items){
  const wins=items.filter(x=>x.status==='TP HIT').length,losses=items.filter(x=>x.status==='SL HIT').length,active=items.filter(x=>x.status==='ACTIVE').length,closed=wins+losses,net=items.reduce((a,x)=>a+(Number(x.resultPoints)||0),0);
@@ -198,15 +204,15 @@ async function refreshLivePrice(){
  try{await ensureDerivConnection();subscribeSelectedTick();if(lastLivePrice===null){const {bars}=await getBars($('market').value,$('tf').value);const p=bars.at(-1)?.c;if(Number.isFinite(p)){$('price').textContent=nfmt(p);$('priceinfo').textContent='Deriv '+$('market').value+' · latest closed candle';}}}
  catch(e){$('price').textContent='—';$('priceinfo').textContent='Deriv feed unavailable · '+e.message;$('feednote').textContent=e.message;}
 }
-async function scanAllMarkets(){
+async function scanMarketsOnce(){
  const btn=$('scanAll'),out=$('scanResults'),status=$('scanStatus'),tfs=['M1','M5','M15','H1'];
- btn.disabled=true;btn.textContent='SCANNING…';let found=[],checked=0,errors=0;
+ let found=[],checked=0,errors=0;
  const renderFound=()=>{const sorted=found.slice().sort((a,b)=>b.time-a.time);out.innerHTML=sorted.length?sorted.map(x=>'<div class="metric" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b class="'+(x.side==='BUY'?'buy':'sell')+'">'+x.side+' · '+x.tf+'</b><b>'+x.name+'</b></div><div class="small">Entry: '+nfmt(x.entry)+' · SL: '+nfmt(x.sl)+' · TP: '+nfmt(x.tp)+'</div><div class="small">'+new Date(x.time).toLocaleString()+' · TP '+x.tpMethod+'</div></div>').join(''):'<div class="metric">Bado hakuna entry iliyopatikana. Matokeo yataonekana hapa moja kwa moja scan ikiendelea.</div>';};
  out.innerHTML='<div class="metric">Scan inaanza… entries zitaonekana hapa moja kwa moja zikigunduliwa.</div>';
  try{
   await ensureDerivConnection();
   const symbols=derivSymbols.slice(),total=symbols.length*tfs.length;
-  status.textContent='Inachunguza '+symbols.length+' instruments × 4 timeframes…';
+  status.textContent='Auto scan: inachunguza '+symbols.length+' instruments × 4 timeframes…';
   for(let i=0;i<symbols.length;i++){
    const item=symbols[i];
    for(const tf of tfs){
@@ -232,10 +238,12 @@ async function scanAllMarkets(){
        if(!Number.isFinite(tp)){tp=entry-Math.max(av*.5,pad*2);tpMethod='ATR';}
        dist=sl-entry;if(!(sl>entry&&tp<entry&&dist>0))side='WAIT';
       }
-      if(side!=='WAIT'){
+      if(side!=='WAIT'&&!hasActiveSignal()){
       const signalItem={side,market:item.symbol,tf,entry:nfmt(entry),sl:nfmt(sl),tp:nfmt(tp),time:new Date(last.t).toLocaleString(),candleTime:last.t,status:'ACTIVE'};
-      addHistory(signalItem);
-      found.push({symbol:item.symbol,name:item.name,side,tf,entry,sl,tp,tpMethod,time:last.t});renderFound();
+      if(addHistory(signalItem)){
+       found.push({symbol:item.symbol,name:item.name,side,tf,entry,sl,tp,tpMethod,time:last.t});renderFound();
+       notifySignal('GRANCEL '+side+' '+item.symbol,tf+' · Entry '+nfmt(entry)+' · SL '+nfmt(sl)+' · TP '+nfmt(tp));
+      }
      }
      }
     }catch(e){errors++;}
@@ -245,11 +253,36 @@ async function scanAllMarkets(){
    }
   }
   renderFound();
-  status.textContent='Scan complete · '+checked+'/'+total+' checks · '+found.length+' entries · '+errors+' data errors.';
+  status.textContent='Scan cycle complete · '+checked+'/'+total+' checks · '+found.length+' new entries · '+(hasActiveSignal()?'1 active signal is being tracked':'No active signal')+' · '+errors+' data errors.';
  }catch(e){status.textContent='Scan failed: '+e.message;out.textContent='Hakuna matokeo yaliyopatikana.';}
- finally{btn.disabled=false;btn.textContent='SCAN ALL MARKETS';}
+ finally{}
+}
+let autoScanEnabled=false,scanCycleBusy=false;
+async function scanAllMarkets(){
+ autoScanEnabled=!autoScanEnabled;
+ const btn=$('scanAll');
+ if(!autoScanEnabled){btn.textContent='START AUTO SCAN';$('scanStatus').textContent='Auto scan imesimamishwa. Signal ACTIVE itaendelea kuonekana kwenye dashboard.';return;}
+ btn.textContent='STOP AUTO SCAN';
+ while(autoScanEnabled){
+  if(!scanCycleBusy){
+   scanCycleBusy=true;
+   try{await scanMarketsOnce();}catch(e){$('scanStatus').textContent='Scan error: '+e.message;}
+   finally{scanCycleBusy=false;}
+  }
+  for(let wait=0;wait<15&&autoScanEnabled;wait++)await new Promise(r=>setTimeout(r,1000));
+ }
+ btn.textContent='START AUTO SCAN';
 }
 $('scanAll').onclick=scanAllMarkets;
+async function scanAllMarketsLoopStart(){
+ const btn=$('scanAll');btn.textContent='STOP AUTO SCAN';
+ while(autoScanEnabled){
+  if(!scanCycleBusy){scanCycleBusy=true;try{await scanMarketsOnce();}catch(e){$('scanStatus').textContent='Scan error: '+e.message;}finally{scanCycleBusy=false;}}
+  for(let wait=0;wait<15&&autoScanEnabled;wait++)await new Promise(r=>setTimeout(r,1000));
+ }
+ btn.textContent='START AUTO SCAN';
+}
+
 async function analyze(){
  if(analysisBusy){rerunPending=true;return;}analysisBusy=true;$('status').textContent='Checking latest closed candle…';
  try{
@@ -293,13 +326,13 @@ async function analyze(){
  $('slLabel').textContent=side==='WAIT'?'PROVISIONAL STOP LOSS':'STOP LOSS';
  $('tpLabel').textContent=side==='WAIT'?'PROVISIONAL TAKE PROFIT':'TP · '+tpMethod;
  $('plan').style.display=side==='WAIT'?'none':'block';$('entry').textContent=nfmt(entry);$('sl').textContent=nfmt(sl);$('tp').textContent=nfmt(tp);$('risk').textContent=nfmt(dist);
- if(side!=='WAIT'){let key=`${market}-${tf}-${last.t}-${side}`;if(key!==lastSignalKey){lastSignalKey=key;let item={side,market,tf,entry:nfmt(entry),sl:nfmt(sl),tp:nfmt(tp),time:new Date().toLocaleString(),candleTime:last.t,status:'ACTIVE'};addHistory(item);notifySignal(`GRANCEL ${side} ${market}`,`Entry ${item.entry} | SL ${item.sl} | TP ${item.tp}`)}}
+ if(side!=='WAIT'){let key=`${market}-${tf}-${last.t}-${side}`;if(key!==lastSignalKey){lastSignalKey=key;let item={side,market,tf,entry:nfmt(entry),sl:nfmt(sl),tp:nfmt(tp),time:new Date().toLocaleString(),candleTime:last.t,status:'ACTIVE'};if(addHistory(item))notifySignal(`GRANCEL ${side} ${market}`,`Entry ${item.entry} | SL ${item.sl} | TP ${item.tp}`)}}
  $('reasons').innerHTML=why.map(x=>`<li>${x}</li>`).join('');$('status').textContent='Analysis complete · '+new Date().toLocaleTimeString();
  }catch(e){$('status').textContent=e.message+' — check internet or retry.';$('reasons').innerHTML='<li>No signal generated because reliable candle data could not be loaded.</li>';$('priceinfo').textContent='Feed unavailable';$('signalinfo').textContent='No data = no signal. Do not trade using old values.';$('plan').style.display='none'}finally{analysisBusy=false;if(rerunPending){rerunPending=false;setTimeout(analyze,150)}}
 }
 $('analyze').onclick=analyze;$('market').onchange=()=>{subscribeSelectedTick();analyze();refreshLivePrice()};$('tf').onchange=()=>{barCache.delete($('market').value+'_'+$('tf').value);analyze();};
 $('clear').onclick=()=>{localStorage.removeItem('grancelHistory');renderHistory()};
 $('notify').onclick=async()=>{if(!('Notification'in window)){alert('This browser does not support notifications.');return}let p=await Notification.requestPermission();$('notifyState').textContent=p==='granted'?'On':p;$('notify').textContent=p==='granted'?'NOTIFICATIONS ENABLED':'ENABLE NOTIFICATIONS'};
-renderHistory();ensureDerivConnection().then(()=>{subscribeSelectedTick();analyze();refreshLivePrice();}).catch(e=>{$('feednote').textContent=e.message;$('status').textContent='Deriv connection failed';});setInterval(refreshLivePrice,15000);
+renderHistory();ensureDerivConnection().then(()=>{subscribeSelectedTick();analyze();refreshLivePrice();if(!autoScanEnabled){autoScanEnabled=true;$('scanAll').textContent='STOP AUTO SCAN';scanAllMarketsLoopStart();}}).catch(e=>{$('feednote').textContent=e.message;$('status').textContent='Deriv connection failed';});setInterval(refreshLivePrice,15000);
 </script>
 </body></html>
