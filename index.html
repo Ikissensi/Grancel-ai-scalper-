@@ -17,7 +17,7 @@
 <section class="card"><label>ANALYSIS REASONS</label><ul id="reasons"><li>Press ANALYZE to retrieve candles.</li></ul></section>
 <section class="card"><div class="row" style="justify-content:space-between"><label style="margin:0">SIGNAL HISTORY</label><button id="clear" style="width:auto;padding:7px 11px;font-size:11px">CLEAR</button></div><div id="history" class="small muted" style="margin-top:10px">No confirmed signals saved.</div></section>
 <section class="card"><label>ALERTS</label><div class="row"><button id="notify" style="flex:1">ENABLE NOTIFICATIONS</button><span class="pill" id="notifyState">Off</span></div><p class="notice">Alerts fire as soon as a completed M1/M5 candle confirms the setup, while this page is open and notifications are allowed. Android may pause background tabs; keep this page active for fastest alerts.</p></section>
-<section class="card"><label>IMPORTANT — DATA & RISK</label><div class="notice">BTCUSDT uses Binance public candles and live ticker price. Confirm candle time and price before using any setup. This app only analyzes and sends signals; it does not place trades. When WAIT is shown, Entry/SL/TP are indicative reference levels only, not an active trade setup. Signals are not guaranteed profits. Always check spread, news, slippage and position size.</div><div class="pill">M1 / M5</div><div class="pill">Liquidity sweep</div><div class="pill">Liquidity sweep only</div><div class="pill">EMA 9/21 context</div><div class="pill">BOS structure</div><div class="pill">Liquidity zones</div><div class="pill">ATR-based SL</div></section>
+<section class="card"><label>IMPORTANT — DATA & RISK</label><div class="notice">BTCUSDT uses Binance public candles and live WebSocket price stream. Confirm candle time and price before using any setup. This app only analyzes and sends signals; it does not place trades. When WAIT is shown, Entry/SL/TP are indicative reference levels only, not an active trade setup. Signals are not guaranteed profits. Always check spread, news, slippage and position size.</div><div class="pill">M1 / M5</div><div class="pill">Liquidity sweep</div><div class="pill">Liquidity sweep only</div><div class="pill">EMA 9/21 context</div><div class="pill">BOS structure</div><div class="pill">Liquidity zones</div><div class="pill">ATR-based SL</div></section>
 
 </main><footer>GRANCEL AI SCALPER V2 • Analysis only — not connected to Exness</footer>
 
@@ -75,8 +75,8 @@ async function getBars(symbol,tf){
 }
 function addHistory(item){let h=JSON.parse(localStorage.getItem('grancelHistory')||'[]');h.unshift(item);h=h.slice(0,25);localStorage.setItem('grancelHistory',JSON.stringify(h));renderHistory()}
 function renderHistory(){let h=JSON.parse(localStorage.getItem('grancelHistory')||'[]');$('history').innerHTML=h.length?h.map(x=>`<div class="history"><b style="color:${x.side==='BUY'?'#22c995':'#ff637a'}">${x.side}</b> · ${x.market} ${x.tf}<br>Entry ${x.entry} · SL ${x.sl} · TP ${x.tp}<br><span class="muted">${x.time}</span></div>`).join(''):'No confirmed signals saved.'}
-function notifySignal(title,body){if('Notification'in window&&Notification.permission==='granted')new Notification(title,{body})}
-let btcSocket=null,btcReconnectTimer=null,lastLivePrice=null,analysisBusy=false;
+function notifySignal(title,body){if(navigator.vibrate)navigator.vibrate([250,100,250]);if('Notification'in window&&Notification.permission==='granted')new Notification(title,{body,tag:title+Date.now(),requireInteraction:true});}
+let btcSocket=null,btcReconnectTimer=null,lastLivePrice=null,analysisBusy=false,rerunPending=false;
 function connectBinanceStream(){
  if(btcSocket&&(btcSocket.readyState===WebSocket.OPEN||btcSocket.readyState===WebSocket.CONNECTING))return;
  try{btcSocket=new WebSocket('wss://stream.binance.com:9443/stream?streams=btcusdt@trade/btcusdt@kline_1m/btcusdt@kline_5m');}catch(e){$('feednote').textContent='Live stream connection failed; REST fallback active.';return;}
@@ -108,7 +108,7 @@ async function refreshLivePrice(){
  $('feednote').textContent='No fresh BTC price received. Check internet and retry; do not trade using old prices.';
 }
 async function analyze(){
- if(analysisBusy)return;analysisBusy=true;$('status').textContent='Checking latest closed candle…';
+ if(analysisBusy){rerunPending=true;return;}analysisBusy=true;$('status').textContent='Checking latest closed candle…';
  try{
  let market=$('market').value,tf=$('tf').value,{bars,source,stamp}=await getBars(market,tf);let c=bars.map(x=>x.c),last=bars[bars.length-1],prev=bars[bars.length-2],fast=ema(c.slice(-60),9),slow=ema(c.slice(-100),21),rv=calcRSI(c),av=atr(bars);
  let previous=bars[bars.length-2];
@@ -137,7 +137,7 @@ async function analyze(){
  $('plan').style.display=side==='WAIT'?'none':'block';$('entry').textContent=nfmt(entry);$('sl').textContent=nfmt(sl);$('tp').textContent=nfmt(tp);$('risk').textContent=nfmt(dist);
  if(side!=='WAIT'){let key=`${market}-${tf}-${last.t}-${side}`;if(key!==lastSignalKey){lastSignalKey=key;let item={side,market,tf,entry:nfmt(entry),sl:nfmt(sl),tp:nfmt(tp),time:new Date().toLocaleString()};addHistory(item);notifySignal(`GRANCEL ${side} ${market}`,`Entry ${item.entry} | SL ${item.sl} | TP ${item.tp}`)}}
  $('reasons').innerHTML=why.map(x=>`<li>${x}</li>`).join('');$('status').textContent='Analysis complete · '+new Date().toLocaleTimeString();
- }catch(e){$('status').textContent=e.message+' — check internet or retry.';$('reasons').innerHTML='<li>No signal generated because reliable candle data could not be loaded.</li>';$('priceinfo').textContent='Feed unavailable';$('signalinfo').textContent='No data = no signal. Do not trade using old values.';$('plan').style.display='none'}finally{analysisBusy=false}
+ }catch(e){$('status').textContent=e.message+' — check internet or retry.';$('reasons').innerHTML='<li>No signal generated because reliable candle data could not be loaded.</li>';$('priceinfo').textContent='Feed unavailable';$('signalinfo').textContent='No data = no signal. Do not trade using old values.';$('plan').style.display='none'}finally{analysisBusy=false;if(rerunPending){rerunPending=false;setTimeout(analyze,150)}}
 }
 $('analyze').onclick=analyze;$('market').onchange=()=>{analyze();refreshLivePrice()};$('tf').onchange=()=>{barCache.delete('BTCUSDT_'+$('tf').value);analyze();};
 $('clear').onclick=()=>{localStorage.removeItem('grancelHistory');renderHistory()};
