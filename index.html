@@ -12,6 +12,7 @@
 <div class="field" style="max-width:130px"><label>ACTION</label><button class="go" id="analyze">ANALYZE</button></div>
 </div><div class="status" style="margin-top:12px"><span class="dot"></span><span id="status">Ready — press ANALYZE</span></div><div class="small" id="feednote"></div></section>
 
+<section class="card" id="scannerCard"><div class="row" style="justify-content:space-between;align-items:center"><div><b>ALL-MARKET ENTRY SCANNER</b><div class="small">Inachunguza instruments zote active za Deriv kwenye timeframe uliyochagua.</div></div><button class="go" id="scanAll" style="width:auto">SCAN ALL MARKETS</button></div><div class="status" id="scanStatus" style="margin-top:10px">Ready · Bonyeza SCAN ALL MARKETS kutafuta BUY/SELL setups.</div><div id="scanResults" class="small muted" style="margin-top:10px">Hakuna scan iliyofanyika bado.</div></section>
 <section class="card" id="chartCard"><div class="row" style="justify-content:space-between;align-items:center"><div><b style="font-size:17px">LIVE CANDLE ANALYSIS</b><div class="small" id="chartMeta">Candlestick chart · M1 / M5</div></div><span class="pill" id="chartState">WAITING FOR DATA</span></div><div id="marketChart" style="height:300px;width:100%;margin-top:12px"></div><div class="grid" style="margin-top:10px"><div class="metric"><span class="small">LIQUIDITY HIGH</span><b id="liqHigh">—</b></div><div class="metric"><span class="small">LIQUIDITY LOW</span><b id="liqLow">—</b></div><div class="metric"><span class="small">MARKET STRUCTURE</span><b id="marketStructure">—</b></div><div class="metric"><span class="small">TREND BIAS</span><b id="trendBias">—</b></div></div></section>
 <section class="card"><label>MARKET PRICE</label><div class="price" id="price">—</div><div class="small" id="priceinfo">No data loaded</div><hr><label>GRANCEL SIGNAL STATUS</label><div id="signal" class="signal wait">WAIT</div><div class="small" id="signalinfo">Direction is not confirmed. Provisional Entry, SL and TP are shown for planning only.</div><div id="plan"><hr><div class="grid"><div class="metric"><span class="small" id="entryLabel">PROVISIONAL ENTRY</span><b id="entry">—</b></div><div class="metric"><span class="small" id="slLabel">PROVISIONAL STOP LOSS</span><b id="sl">—</b></div><div class="metric"><span class="small" id="tpLabel">TP · PREVIOUS BODY</span><b id="tp">—</b></div><div class="metric"><span class="small">RISK DISTANCE</span><b id="risk">—</b></div></div></div><hr><div class="grid"><div class="metric"><span class="small">RSI (14)</span><b id="rsi">—</b></div><div class="metric"><span class="small">EMA 9 / 21</span><b id="ema">—</b></div><div class="metric"><span class="small">STRUCTURE</span><b id="structure">—</b></div><div class="metric"><span class="small">CANDLES</span><b id="count">—</b></div></div></section>
 <section class="card"><label>ANALYSIS REASONS</label><ul id="reasons"><li>Press ANALYZE to retrieve candles.</li></ul></section>
@@ -157,6 +158,55 @@ async function refreshLivePrice(){
  try{await ensureDerivConnection();subscribeSelectedTick();if(lastLivePrice===null){const {bars}=await getBars($('market').value,$('tf').value);const p=bars.at(-1)?.c;if(Number.isFinite(p)){$('price').textContent=nfmt(p);$('priceinfo').textContent='Deriv '+$('market').value+' · latest closed candle';}}}
  catch(e){$('price').textContent='—';$('priceinfo').textContent='Deriv feed unavailable · '+e.message;$('feednote').textContent=e.message;}
 }
+async function scanAllMarkets(){
+ const btn=$('scanAll'),out=$('scanResults'),status=$('scanStatus'),tf=$('tf').value;
+ btn.disabled=true;btn.textContent='SCANNING…';out.innerHTML='';let found=[],checked=0,errors=0;
+ try{
+  await ensureDerivConnection();
+  const symbols=derivSymbols.slice();
+  status.textContent='Inachunguza '+symbols.length+' instruments kwenye '+tf+'…';
+  for(let i=0;i<symbols.length;i++){
+   const item=symbols[i];
+   try{
+    const payload=await derivRequest({ticks_history:item.symbol,count:120,end:'latest',style:'candles',granularity:tf==='M1'?60:300},12000);
+    const candles=payload.candles||[];
+    if(candles.length<30){errors++;continue;}
+    const bars=candles.slice(0,-1).map(x=>({t:Number(x.epoch)*1000,o:+x.open,h:+x.high,l:+x.low,c:+x.close})).filter(x=>[x.t,x.o,x.h,x.l,x.c].every(Number.isFinite));
+    if(bars.length<30){errors++;continue;}
+    const last=bars.at(-1),prev=bars.at(-2),av=atr(bars);
+    const sweepLow=last.l<prev.l&&last.c>prev.l&&last.c<prev.h;
+    const sweepHigh=last.h>prev.h&&last.c<prev.h&&last.c>prev.l;
+    let side=sweepLow?'BUY':sweepHigh?'SELL':'WAIT';
+    if(side!=='WAIT'){
+     const entry=last.c,pad=Math.max(av*0.10,entry*0.00008);
+     const bodyLow=Math.min(prev.o,prev.c),bodyHigh=Math.max(prev.o,prev.c);
+     let sl,tp,tpMethod='BODY',dist;
+     if(side==='BUY'){
+      sl=last.l-pad;tp=[bodyLow-pad,bodyHigh-pad].find(x=>x>entry);
+      if(!Number.isFinite(tp)){tp=entry+Math.max(av*.5,pad*2);tpMethod='ATR';}
+      dist=entry-sl;
+      if(!(sl<entry&&tp>entry&&dist>0))side='WAIT';
+     }else{
+      sl=last.h+pad;tp=[bodyHigh+pad,bodyLow+pad].find(x=>x<entry);
+      if(!Number.isFinite(tp)){tp=entry-Math.max(av*.5,pad*2);tpMethod='ATR';}
+      dist=sl-entry;
+      if(!(sl>entry&&tp<entry&&dist>0))side='WAIT';
+     }
+     if(side!=='WAIT')found.push({symbol:item.symbol,name:item.name,side,entry,sl,tp,tpMethod,time:last.t});
+    }
+   }catch(e){errors++;}
+   checked++;
+   if(i%5===0||i===symbols.length-1)status.textContent='Scanning '+checked+'/'+symbols.length+' · Entries '+found.length+' · Data errors '+errors;
+   if(i%3===2)await new Promise(r=>setTimeout(r,180));
+  }
+  found.sort((a,b)=>b.time-a.time);
+  if(!found.length)out.innerHTML='<div class="metric">Hakuna BUY/SELL entry iliyothibitishwa kwenye '+tf+' kwa sasa. Instruments zilizochunguzwa: '+checked+'.</div>';
+  else out.innerHTML=found.map(x=>'<div class="metric" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px"><b class="'+(x.side==='BUY'?'buy':'sell')+'">'+x.side+'</b><b>'+x.name+'</b></div><div class="small">Entry: '+nfmt(x.entry)+' · SL: '+nfmt(x.sl)+' · TP: '+nfmt(x.tp)+'</div><div class="small">TF '+tf+' · '+new Date(x.time).toLocaleString()+' · TP '+x.tpMethod+'</div></div>').join('');
+  status.textContent='Scan complete · '+checked+'/'+symbols.length+' checked · '+found.length+' entries · '+errors+' data errors.';
+ }catch(e){status.textContent='Scan failed: '+e.message;out.textContent='Hakuna matokeo yaliyopatikana.';}
+ finally{btn.disabled=false;btn.textContent='SCAN ALL MARKETS';}
+}
+$('scanAll').onclick=scanAllMarkets;
 async function analyze(){
  if(analysisBusy){rerunPending=true;return;}analysisBusy=true;$('status').textContent='Checking latest closed candle…';
  try{
