@@ -101,7 +101,7 @@ function evaluateHistory(bars,market,tf){
  renderHistory();
 }
 function notifySignal(title,body){if(navigator.vibrate)navigator.vibrate([250,100,250]);if('Notification'in window&&Notification.permission==='granted')new Notification(title,{body,tag:title+Date.now(),requireInteraction:true});}
-const DERIV_APP_ID='352MfaVswSnhnpnvvlicc';
+// Public market-data endpoint; no App ID or account token is required.
 let derivSocket=null,derivConnectPromise=null,derivReqId=10,derivWaiters=new Map(),derivSymbols=[],activeTickSymbol='',lastLivePrice=null,lastDerivBucket=null,analysisBusy=false,rerunPending=false;
 function derivRequest(payload,timeout=15000){
  return new Promise((resolve,reject)=>{
@@ -112,7 +112,7 @@ function derivRequest(payload,timeout=15000){
 }
 function populateDerivMarkets(list){
  const select=$('market');
- const active=list.map(x=>({symbol:x.symbol||x.underlying_symbol,name:x.display_name||x.underlying_symbol_name||x.symbol||x.underlying_symbol,market:x.market||'other',open:Number(x.exchange_is_open)===1,suspended:Number(x.is_trading_suspended)===1})).filter(x=>x.symbol&&!x.suspended&&x.open);
+ const active=list.map(x=>({symbol:x.symbol||x.underlying_symbol,name:x.display_name||x.underlying_symbol_name||x.symbol||x.underlying_symbol,market:x.market_display_name||x.market||x.submarket_display_name||x.submarket||'other',suspended:x.is_trading_suspended===true||Number(x.is_trading_suspended)===1})).filter(x=>x.symbol&&!x.suspended);
  const unique=[...new Map(active.map(x=>[x.symbol,x])).values()];
  if(!unique.length)throw new Error('Deriv haijarudisha instrument zilizo wazi na zinazoweza kutrade sasa.');
  const groups=[['Cryptocurrencies',x=>/crypto/i.test(x.market)],['Forex',x=>/forex/i.test(x.market)],['Commodities',x=>/commodit/i.test(x.market)],['Stock indices',x=>/index|indices/i.test(x.market)],['Derived / Synthetic indices',x=>/synthetic|derived/i.test(x.market)],['Other active markets',x=>true]];
@@ -134,11 +134,11 @@ function ensureDerivConnection(){
  if(derivSocket&&derivSocket.readyState===WebSocket.OPEN&&derivSymbols.length)return Promise.resolve(derivSymbols);
  if(derivConnectPromise)return derivConnectPromise;
  derivConnectPromise=new Promise((resolve,reject)=>{
-  try{derivSocket=new WebSocket('wss://ws.derivws.com/websockets/v3?app_id='+DERIV_APP_ID);}catch(e){reject(e);return;}
+  try{derivSocket=new WebSocket('wss://api.derivws.com/trading/v1/options/ws/public');}catch(e){reject(e);return;}
   const timeout=setTimeout(()=>reject(new Error('Deriv connection timeout')),18000);
-  derivSocket.onopen=()=>derivRequest({active_symbols:'full'}).then(data=>{
+  derivSocket.onopen=()=>derivRequest({active_symbols:'brief'}).then(data=>{
    clearTimeout(timeout);if(data.error)throw new Error(data.error.message);
-   populateDerivMarkets(data.active_symbols||[]);subscribeSelectedTick();resolve(derivSymbols);
+   populateDerivMarkets(data.active_symbols||data.data?.active_symbols||[]);subscribeSelectedTick();resolve(derivSymbols);
   }).catch(e=>{clearTimeout(timeout);reject(e);});
   derivSocket.onmessage=ev=>{try{
    const d=JSON.parse(ev.data);
