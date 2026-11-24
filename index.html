@@ -14,7 +14,7 @@
 
 
 <section class="card" id="mtfCard"><b>MULTI-TIMEFRAME ANALYSIS</b><div class="small">Mifumo miwili tofauti: independent sweep na confirmation.</div><hr><b class="buy">1 · INDEPENDENT SWEEP SIGNALS</b><div class="small">Kila timeframe inatoa signal yake kwa rule ya sweep pekee.</div><div id="mtfIndependent" class="small muted" style="margin-top:9px">Inasubiri analysis…</div><hr><b class="wait">2 · CONFIRMED SIGNALS</b><div class="small">M1/M5 zinahitaji M15 na H1 zikubaliane; M15 inahitaji H1 ithibitishe.</div><div id="mtfConfirmed" class="small muted" style="margin-top:9px">Inasubiri confirmation…</div></section>
-<section class="card" id="scannerCard"><div class="row" style="justify-content:space-between;align-items:center"><div><b>ALL-MARKET ENTRY SCANNER</b><div class="small">Inachunguza instruments zote active za Deriv kwenye timeframe uliyochagua.</div></div><button class="go" id="scanAll" style="width:auto">SCAN ALL MARKETS</button></div><div class="status" id="scanStatus" style="margin-top:10px">Ready · Bonyeza SCAN ALL MARKETS kutafuta BUY/SELL setups.</div><div id="scanResults" class="small muted" style="margin-top:10px">Hakuna scan iliyofanyika bado.</div></section>
+<section class="card" id="scannerCard"><div class="row" style="justify-content:space-between;align-items:center"><div><b>ALL-MARKET ENTRY SCANNER</b><div class="small">Inachunguza markets zote; inaonyesha entries za strict sweep zilizothibitishwa na higher timeframes.</div></div><button class="go" id="scanAll" style="width:auto">SCAN ALL MARKETS</button></div><div class="status" id="scanStatus" style="margin-top:10px">Ready · Bonyeza SCAN ALL MARKETS kutafuta BUY/SELL setups.</div><div id="scanResults" class="small muted" style="margin-top:10px">Hakuna scan iliyofanyika bado.</div></section>
 <section class="card" id="chartCard"><div class="row" style="justify-content:space-between;align-items:center"><div><b style="font-size:17px">LIVE CANDLE ANALYSIS</b><div class="small" id="chartMeta">Candlestick chart · M1 / M5</div></div><span class="pill" id="chartState">WAITING FOR DATA</span></div><div id="marketChart" style="height:300px;width:100%;margin-top:12px"></div><div class="grid" style="margin-top:10px"><div class="metric"><span class="small">LIQUIDITY HIGH</span><b id="liqHigh">—</b></div><div class="metric"><span class="small">LIQUIDITY LOW</span><b id="liqLow">—</b></div><div class="metric"><span class="small">MARKET STRUCTURE</span><b id="marketStructure">—</b></div><div class="metric"><span class="small">TREND BIAS</span><b id="trendBias">—</b></div></div></section>
 <section class="card"><label>MARKET PRICE</label><div class="price" id="price">—</div><div class="small" id="priceinfo">No data loaded</div><hr><label>GRANCEL SIGNAL STATUS</label><div id="signal" class="signal wait">WAIT</div><div class="small" id="signalinfo">Direction is not confirmed. Provisional Entry, SL and TP are shown for planning only.</div><div id="plan"><hr><div class="grid"><div class="metric"><span class="small" id="entryLabel">PROVISIONAL ENTRY</span><b id="entry">—</b></div><div class="metric"><span class="small" id="slLabel">PROVISIONAL STOP LOSS</span><b id="sl">—</b></div><div class="metric"><span class="small" id="tpLabel">TP · PREVIOUS BODY</span><b id="tp">—</b></div><div class="metric"><span class="small">RISK DISTANCE</span><b id="risk">—</b></div></div></div><hr><div class="grid"><div class="metric"><span class="small">RSI (14)</span><b id="rsi">—</b></div><div class="metric"><span class="small">EMA 9 / 21</span><b id="ema">—</b></div><div class="metric"><span class="small">STRUCTURE</span><b id="structure">—</b></div><div class="metric"><span class="small">CANDLES</span><b id="count">—</b></div></div></section>
 <section class="card"><label>ANALYSIS REASONS</label><ul id="reasons"><li>Press ANALYZE to retrieve candles.</li></ul></section>
@@ -65,19 +65,35 @@ function ema(a,p){let k=2/(p+1),v=a[0];for(let i=1;i<a.length;i++)v=a[i]*k+v*(1-
 function calcRSI(c,p=14){let g=0,l=0;for(let i=c.length-p;i<c.length;i++){let d=c[i]-c[i-1];if(d>0)g+=d;else l-=d}return l===0?100:100-100/(1+g/l)}
 function atr(b,p=14){let s=0;for(let i=b.length-p;i<b.length;i++)s+=Math.max(b[i].h-b[i].l,Math.abs(b[i].h-b[i-1].c),Math.abs(b[i].l-b[i-1].c));return s/p}
 function detectSweepSetup(bars){
- if(!bars||bars.length<3)return {side:'WAIT',reason:'Not enough candles'};
+ if(!bars||bars.length<3)return {side:'WAIT',reason:'Not enough closed candles'};
  const first=bars[bars.length-2],second=bars[bars.length-1];
  const firstBody=Math.abs(first.c-first.o),secondBody=Math.abs(second.c-second.o);
  const range=Math.max(first.h-first.l,1e-12);
  const upperWick=first.h-Math.max(first.o,first.c),lowerWick=Math.min(first.o,first.c)-first.l;
- const closesInside=second.c>=first.l&&second.c<=first.h;
+ const closesInside=second.c>first.l&&second.c<first.h;
  const smallBody=firstBody>0&&secondBody<=firstBody*0.5;
- if(!closesInside||!smallBody)return {side:'WAIT',reason:!closesInside?'Candle 2 haikufunga ndani ya candle 1':'Body ya candle 2 ni kubwa kuliko 50% ya body ya candle 1'};
- const sell=upperWick>range*0.02&&second.h>first.h&&second.c<first.h&&second.c>first.l;
- const buy=lowerWick>range*0.02&&second.l<first.l&&second.c>first.l&&second.c<first.h;
- if(sell&& !buy)return {side:'SELL',first,second,reason:'Ime-sweep upper wick ya candle 1, imefunga ndani; body ya candle 2 ≤50% ya body ya candle 1'};
- if(buy&& !sell)return {side:'BUY',first,second,reason:'Ime-sweep lower wick ya candle 1, imefunga ndani; body ya candle 2 ≤50% ya body ya candle 1'};
- return {side:'WAIT',reason:'Hakuna sweep sahihi ya wick ya candle 1'};
+ const validUpperWick=upperWick>=Math.max(range*0.15,firstBody*0.15);
+ const validLowerWick=lowerWick>=Math.max(range*0.15,firstBody*0.15);
+ const sell=validUpperWick&&second.h>first.h&&closesInside&&smallBody&&second.c>second.o;
+ const buy=validLowerWick&&second.l<first.l&&closesInside&&smallBody&&second.c<second.o;
+ if(sell&&!buy)return {side:'SELL',first,second,reason:'STRICT SELL: candle 1 ina upper wick yenye ukubwa wa kutosha; candle 2 imeisweep, imefunga ndani, body ≤50% na ni bullish (green)'};
+ if(buy&&!sell)return {side:'BUY',first,second,reason:'STRICT BUY: candle 1 ina lower wick yenye ukubwa wa kutosha; candle 2 imeisweep, imefunga ndani, body ≤50% na ni bearish (red)'};
+ let reasons=[];
+ if(!closesInside)reasons.push('candle 2 haijafunga ndani ya candle 1');
+ if(!smallBody)reasons.push('body ya candle 2 imezidi 50% ya body ya candle 1');
+ if(!validUpperWick&&!validLowerWick)reasons.push('candle 1 haina wick ya liquidity yenye ukubwa wa kutosha');
+ if(validUpperWick&&second.h>first.h&&! (second.c>second.o))reasons.push('SELL rejection candle 2 si bullish/green');
+ if(validLowerWick&&second.l<first.l&&! (second.c<second.o))reasons.push('BUY rejection candle 2 si bearish/red');
+ return {side:'WAIT',reason:reasons.join('; ')||'Hakuna sweep sahihi ya wick ya candle 1'};
+}
+async function scannerMtfConfirmed(symbol,tf,side){
+ const higher=tf==='M1'||tf==='M5'?['M15','H1']:tf==='M15'?['H1']:[];
+ if(!higher.length)return false;
+ for(const htf of higher){
+  const {bars}=await getBars(symbol,htf);
+  if(detectSweepSetup(bars).side!==side)return false;
+ }
+ return true;
 }
 async function updateMultiTimeframe(market){
  const tfs=['M1','M5','M15','H1'],results={};
@@ -119,14 +135,14 @@ function setGroupStats(prefix,items){
 function getHistory(){return JSON.parse(localStorage.getItem('grancelHistory')||'[]')}
 function saveHistory(h){localStorage.setItem('grancelHistory',JSON.stringify(h))}
 function renderStats(){
- const h=getHistory();
+ const h=getHistory().filter(x=>x.strategy==='STRICT_MTF_CONFIRMED');
  setGroupStats('btc',h.filter(x=>marketGroup(x)==='btc'));
  setGroupStats('xau',h.filter(x=>marketGroup(x)==='xau'));
  setGroupStats('other',h.filter(x=>marketGroup(x)==='other'));
 }
 function renderHistory(){
  let h=getHistory();
- $('history').innerHTML=h.length?h.map(x=>{let st=x.status||'UNVERIFIED',cls=st==='TP HIT'?'win':st==='SL HIT'?'loss':st==='EXPIRED'||st==='UNVERIFIED'?'expired':'active';return `<div class="history"><b style="color:${x.side==='BUY'?'#22c995':'#ff637a'}">${x.side}</b> · ${x.market} ${x.tf}<br>Entry ${x.entry} · SL ${x.sl} · TP ${x.tp}<br><span class="result ${cls}">${st}${x.resultPoints!==undefined?' · '+(Number(x.resultPoints)>=0?'+':'')+Number(x.resultPoints).toFixed(2)+' pts':''}</span><br><span class="muted">${x.time}</span></div>`}).join(''):'No confirmed signals saved.';
+ $('history').innerHTML=h.length?h.map(x=>{let st=x.status||'UNVERIFIED',cls=st==='TP HIT'?'win':st==='SL HIT'?'loss':st==='EXPIRED'||st==='UNVERIFIED'?'expired':'active';return `<div class="history"><b style="color:${x.side==='BUY'?'#22c995':'#ff637a'}">${x.side}</b> · ${x.market} ${x.tf} · ${x.strategy==='STRICT_MTF_CONFIRMED'?'MTF CONFIRMED':x.strategy==='STRICT_SWEEP_ONLY'?'SWEEP ONLY':'LEGACY'}<br>Entry ${x.entry} · SL ${x.sl} · TP ${x.tp}<br><span class="result ${cls}">${st}${x.resultPoints!==undefined?' · '+(Number(x.resultPoints)>=0?'+':'')+Number(x.resultPoints).toFixed(2)+' pts':''}</span><br><span class="muted">${x.time}</span></div>`}).join(''):'No confirmed signals saved.';
  renderStats();
 }
 function evaluateHistory(bars,market,tf){
@@ -241,11 +257,11 @@ async function scanMarketsOnce(){
        if(!Number.isFinite(tp)){tp=entry-Math.max(av*.5,pad*2);tpMethod='ATR';}
        dist=sl-entry;if(!(sl>entry&&tp<entry&&dist>0))side='WAIT';
       }
-      if(side!=='WAIT'){
-      const signalItem={side,market:item.symbol,tf,entry:nfmt(entry),sl:nfmt(sl),tp:nfmt(tp),time:new Date(last.t).toLocaleString(),candleTime:last.t,status:'ACTIVE'};
+      if(side!=='WAIT'&&await scannerMtfConfirmed(item.symbol,tf,side)){
+      const signalItem={side,market:item.symbol,tf,entry:nfmt(entry),sl:nfmt(sl),tp:nfmt(tp),time:new Date(last.t).toLocaleString(),candleTime:last.t,status:'ACTIVE',strategy:'STRICT_MTF_CONFIRMED'};
       if(addHistory(signalItem)){
        found.push({symbol:item.symbol,name:item.name,side,tf,entry,sl,tp,tpMethod,time:last.t});renderFound();
-       notifySignal('GRANCEL '+side+' '+item.symbol,tf+' · Entry '+nfmt(entry)+' · SL '+nfmt(sl)+' · TP '+nfmt(tp));
+       notifySignal('GRANCEL CONFIRMED '+side+' '+item.symbol,tf+' · MTF confirmed · Entry '+nfmt(entry)+' · SL '+nfmt(sl)+' · TP '+nfmt(tp));
       }
      }
      }
@@ -329,7 +345,7 @@ async function analyze(){
  $('slLabel').textContent=side==='WAIT'?'PROVISIONAL STOP LOSS':'STOP LOSS';
  $('tpLabel').textContent=side==='WAIT'?'PROVISIONAL TAKE PROFIT':'TP · '+tpMethod;
  $('plan').style.display=side==='WAIT'?'none':'block';$('entry').textContent=nfmt(entry);$('sl').textContent=nfmt(sl);$('tp').textContent=nfmt(tp);$('risk').textContent=nfmt(dist);
- if(side!=='WAIT'){let key=`${market}-${tf}-${last.t}-${side}`;let item={side,market,tf,entry:nfmt(entry),sl:nfmt(sl),tp:nfmt(tp),time:new Date().toLocaleString(),candleTime:last.t,status:'ACTIVE'};if(key!==lastSignalKey){lastSignalKey=key;if(addHistory(item))notifySignal(`GRANCEL ${side} ${market}`,`Entry ${item.entry} | SL ${item.sl} | TP ${item.tp}`)}else{addHistory(item)}}
+ if(side!=='WAIT'){let key=`${market}-${tf}-${last.t}-${side}`;let item={side,market,tf,entry:nfmt(entry),sl:nfmt(sl),tp:nfmt(tp),time:new Date().toLocaleString(),candleTime:last.t,status:'ACTIVE',strategy:'STRICT_SWEEP_ONLY'};if(key!==lastSignalKey){lastSignalKey=key;if(addHistory(item))notifySignal(`GRANCEL ${side} ${market}`,`Entry ${item.entry} | SL ${item.sl} | TP ${item.tp}`)}else{addHistory(item)}}
  $('reasons').innerHTML=why.map(x=>`<li>${x}</li>`).join('');$('status').textContent='Analysis complete · '+new Date().toLocaleTimeString();
  }catch(e){$('status').textContent=e.message+' — check internet or retry.';$('reasons').innerHTML='<li>No signal generated because reliable candle data could not be loaded.</li>';$('priceinfo').textContent='Feed unavailable';$('signalinfo').textContent='No data = no signal. Do not trade using old values.';$('plan').style.display='none'}finally{analysisBusy=false;if(rerunPending){rerunPending=false;setTimeout(analyze,150)}}
 }
