@@ -24,7 +24,26 @@
 <div class="metric" style="margin:10px 0"><b>OTHER MARKETS PERFORMANCE</b><div class="stats"><div class="stat"><span>SIGNALS</span><b id="otherTotal">0</b></div><div class="stat"><span>WINS</span><b id="otherWins">0</b></div><div class="stat"><span>LOSSES</span><b id="otherLosses">0</b></div><div class="stat"><span>ACTIVE</span><b id="otherActive">0</b></div><div class="stat"><span>WIN RATE</span><b id="otherRate">—</b></div></div><div class="small">Net points: <b id="otherNet">0.00</b></div></div>
 <p class="notice">BTCUSD, XAUUSD/GOLD na markets nyingine zinafuatiliwa tofauti. Win/Loss hutegemea TP/SL kuguswa kwenye candles zilizofungwa; ikiguswa zote kwenye candle moja, SL huhesabiwa kwanza. Hii ni candle-based tracking, si account P/L wala trade execution.</p></section>\n<section class="card" id="simulatorCard"><label>VIRTUAL ACCOUNTS · 3 SEPARATE BALANCES</label><div class="small">Kila kundi lina akaunti yake ya kuanzia $50. Faida/hasara ya kundi moja haigusi akaunti nyingine. Kila signal ina 0.01 lot.</div>
 <div class="metric" style="margin:10px 0"><b>GOLD · $50</b><div class="stats"><div class="stat"><span>START BALANCE</span><b>$50.00</b></div><div class="stat"><span>ACCOUNT BALANCE</span><b id="xauSimBalance">$50.00</b></div><div class="stat"><span>EST. P/L</span><b id="xauSimPL">$0.00</b></div><div class="stat"><span>WINS / LOSSES</span><b id="xauSimWL">0 / 0</b></div><div class="stat"><span>ACTIVE SIGNALS</span><b id="xauSimActive">0</b></div><div class="stat"><span>CLOSED TRADES</span><b id="xauSimClosed">0</b></div><div class="stat"><span>TOTAL SIGNALS</span><b id="xauSimSignals">0</b></div></div><div class="small" style="margin-top:8px">Markets: <b id="xauSimMarkets">Bado hakuna signal</b></div></div><div class="metric" style="margin:10px 0"><b>BTCUSD · $50</b><div class="stats"><div class="stat"><span>START BALANCE</span><b>$50.00</b></div><div class="stat"><span>ACCOUNT BALANCE</span><b id="btcSimBalance">$50.00</b></div><div class="stat"><span>EST. P/L</span><b id="btcSimPL">$0.00</b></div><div class="stat"><span>WINS / LOSSES</span><b id="btcSimWL">0 / 0</b></div><div class="stat"><span>ACTIVE SIGNALS</span><b id="btcSimActive">0</b></div><div class="stat"><span>CLOSED TRADES</span><b id="btcSimClosed">0</b></div><div class="stat"><span>TOTAL SIGNALS</span><b id="btcSimSignals">0</b></div></div><div class="small" style="margin-top:8px">Markets: <b id="btcSimMarkets">Bado hakuna signal</b></div></div><div class="metric" style="margin:10px 0"><b>OTHER MARKETS · $50</b><div class="stats"><div class="stat"><span>START BALANCE</span><b>$50.00</b></div><div class="stat"><span>ACCOUNT BALANCE</span><b id="otherSimBalance">$50.00</b></div><div class="stat"><span>EST. P/L</span><b id="otherSimPL">$0.00</b></div><div class="stat"><span>WINS / LOSSES</span><b id="otherSimWL">0 / 0</b></div><div class="stat"><span>ACTIVE SIGNALS</span><b id="otherSimActive">0</b></div><div class="stat"><span>CLOSED TRADES</span><b id="otherSimClosed">0</b></div><div class="stat"><span>TOTAL SIGNALS</span><b id="otherSimSignals">0</b></div></div><div class="small" style="margin-top:8px">Markets: <b id="otherSimMarkets">Bado hakuna signal</b></div></div>
-<p class="notice">Hii ni simulation tu, si account ya Deriv na haitoi trades. Kila kundi lina balance yake ya $50. P/L ni makadirio kwa sababu contract multiplier za instruments hazijathibitishwa zote; spread, commission na swap hazijajumuishwa. Data huhifadhiwa kwenye browser hii pekee.</p></section><section class="card"><div class="row" style="justify-content:space-between"><label style="margin:0">SIGNAL HISTORY</label><button id="clear" style="width:auto;padding:7px 11px;font-size:11px">CLEAR</button></div><div id="history" class="small muted" style="margin-top:10px">No confirmed signals saved.</div></section>
+<p class="notice">Hii ni simulation tu, si account ya Deriv na haitoi trades. Kila kundi lina balance yake ya $50. P/L ni makadirio kwa sababu contract multiplier za instruments hazijathibitishwa zote; spread, commission na swap hazijajumuishwa. Data huhifadhiwa kwenye browser hii pekee.</p></section>
+<section class="card" id="quantamCard">
+ <div class="row" style="justify-content:space-between;align-items:center"><div><b style="font-size:19px;color:var(--gold)">QUANTAM · QUANT FLIPPER BASKET</b><div class="small">BTCUSD · M5 · Virtual paper account</div></div><span class="pill" id="qaState">STARTING…</span></div>
+ <div class="stats">
+  <div class="stat"><span>START BALANCE</span><b>$50.00</b></div>
+  <div class="stat"><span>CURRENT BALANCE</span><b id="qaBalance">$50.00</b></div>
+  <div class="stat"><span>FLOATING P/L</span><b id="qaFloating">$0.00</b></div>
+  <div class="stat"><span>TOTAL CLOSED TRADES</span><b id="qaTrades">0</b></div>
+  <div class="stat"><span>WINS / LOSSES</span><b id="qaWL">0 / 0</b></div>
+  <div class="stat"><span>WIN RATE</span><b id="qaRate">—</b></div>
+  <div class="stat"><span>ACTIVE POSITIONS</span><b id="qaActive">0</b></div>
+  <div class="stat"><span>NET P/L</span><b id="qaNet">$0.00</b></div>
+ </div>
+ <div class="small" id="qaInfo">Inasubiri BTCUSD M5 candle data…</div>
+ <hr><b>ACTIVE BASKET</b><div id="qaPositions" class="small muted" style="margin-top:8px">Hakuna position.</div>
+ <hr><b>TRADE HISTORY</b><div id="qaHistory" class="small muted" style="margin-top:8px">Bado hakuna trade iliyofungwa.</div>
+ <hr><b>EQUITY CURVE</b><div id="qaEquity" style="height:120px;display:flex;align-items:end;gap:3px;padding:8px;background:#0c1726;border-radius:10px;margin-top:8px"><span class="small muted">Chart itaonekana baada ya trades.</span></div>
+ <p class="notice">QUANTAM ni simulation ya $50 tu; haitumi orders kwenye Deriv/Exness/MT5. Imetumia sheria zilizo kwenye Quant_Flipper_Basket.mq5: EMA 20/50/200, RSI 14, batch ya positions 3, stacking kwa hatua ya $20, basket target $40 kwa kila lot, flip, basket loss 8%, SL $300 na TP $80 kwa order. Kwa kuwa contract size/minimum lot hutofautiana kwa broker, P/L hapa ni makadirio ya mfano (1 lot = 1 BTC; minimum virtual lot 0.01). Feed inategemea browser kuwa wazi; simu ikilala inaweza kusitisha scan.</p>
+</section>
+<section class="card"><div class="row" style="justify-content:space-between"><label style="margin:0">SIGNAL HISTORY</label><button id="clear" style="width:auto;padding:7px 11px;font-size:11px">CLEAR</button></div><div id="history" class="small muted" style="margin-top:10px">No confirmed signals saved.</div></section>
 <section class="card"><label>ALERTS</label><div class="row"><button id="notify" style="flex:1">ENABLE NOTIFICATIONS</button><span class="pill" id="notifyState">Off</span></div><p class="notice">Alerts fire as soon as a completed M1/M5 candle confirms the setup, while this page is open and notifications are allowed. Android may pause background tabs; keep this page active for fastest alerts.</p></section>
 <section class="card"><label>IMPORTANT — DATA & RISK</label><div class="notice">All selected instruments use Deriv candles and live ticks. Dropdown lists only currently open, non-suspended symbols returned by Deriv. This app only analyzes and sends signals; it does not place trades. When WAIT is shown, Entry/SL/TP are indicative reference levels only, not an active trade setup. Signals are not guaranteed profits. Always check spread, news, slippage and position size.</div><div class="pill">M1 / M5</div><div class="pill">Liquidity sweep</div><div class="pill">Liquidity sweep only</div><div class="pill">EMA 9/21 context</div><div class="pill">BOS structure</div><div class="pill">Liquidity zones</div><div class="pill">ATR-based SL</div></section>
 
@@ -409,5 +428,74 @@ $('tf').onchange=()=>{barCache.delete($('market').value+'_'+$('tf').value);analy
 $('clear').onclick=()=>{localStorage.removeItem('grancelHistory');lastSignalKey='';renderHistory()};
 $('notify').onclick=async()=>{if(!('Notification'in window)){alert('This browser does not support notifications.');return}let p=await Notification.requestPermission();$('notifyState').textContent=p==='granted'?'On':p;$('notify').textContent=p==='granted'?'NOTIFICATIONS ENABLED':'ENABLE NOTIFICATIONS'};
 renderHistory();ensureDerivConnection().then(()=>{subscribeSelectedTick();analyze();refreshLivePrice();setAutoAnalyze(true);if(!autoScanEnabled){autoScanEnabled=true;$('scanAll').textContent='STOP AUTO SCAN';scanAllMarketsLoopStart();}}).catch(e=>{$('feednote').textContent=e.message;$('status').textContent='Deriv connection failed';});setInterval(refreshLivePrice,15000);
+
+/* QUANTAM virtual implementation of Quant_Flipper_Basket.mq5 rules */
+const QA_KEY='grancelQuantamV1';
+const QA_START=50;
+let qa={balance:QA_START,positions:[],history:[],equity:[QA_START],lastBar:0,lastPrice:0,signal:0};
+try{const saved=JSON.parse(localStorage.getItem(QA_KEY)||'null');if(saved&&saved.balance!==undefined)qa={...qa,...saved};}catch(e){}
+function qaSave(){localStorage.setItem(QA_KEY,JSON.stringify(qa));}
+function qaEma(values,period){const k=2/(period+1);let v=values[0];for(let i=1;i<values.length;i++)v=values[i]*k+v*(1-k);return v;}
+function qaRsi(values,period=14){let gain=0,loss=0;for(let i=values.length-period;i<values.length;i++){const d=values[i]-values[i-1];if(d>0)gain+=d;else loss-=d;}return loss===0?100:100-100/(1+gain/loss);}
+function qaSignal(bars){
+ const c=bars.map(x=>x.c);if(c.length<205)return 0;
+ const f=qaEma(c.slice(-205),20),s=qaEma(c.slice(-205),50),t=qaEma(c.slice(-205),200),r=qaRsi(c,14),close=c.at(-1);
+ if(f>s&&close>t&&r<75)return 1;
+ if(f<s&&close<t&&r>25)return -1;
+ return 0;
+}
+function qaLot(){const raw=qa.balance/1000*0.05;return Math.max(0.01,Math.min(5,Math.floor(raw/0.01)*0.01));}
+function qaFloating(price){return qa.positions.reduce((sum,p)=>sum+(p.dir===1?(price-p.entry):(p.entry-price))*p.lot,0);}
+function qaCloseAll(price,reason){
+ if(!qa.positions.length)return;
+ for(const p of qa.positions){const pl=(p.dir===1?(price-p.entry):(p.entry-price))*p.lot;qa.balance+=pl;qa.history.unshift({side:p.dir===1?'BUY':'SELL',entry:p.entry,exit:price,lot:p.lot,pl,reason,time:new Date().toLocaleString()});}
+ qa.positions=[];qa.history=qa.history.slice(0,35);qa.equity.push(qa.balance);qa.equity=qa.equity.slice(-45);
+}
+function qaOpenBatch(dir,price){
+ const lot=qaLot();
+ for(let i=0;i<3;i++)qa.positions.push({dir,entry:price,lot,sl:dir===1?price-300:price+300,tp:dir===1?price+80:price-80,time:Date.now()});
+}
+function qaRender(price){
+ const floating=qaFloating(price),equity=qa.balance+floating,closed=qa.history.length,wins=qa.history.filter(x=>x.pl>0).length,losses=qa.history.filter(x=>x.pl<=0).length,net=qa.balance-QA_START;
+ const put=(id,v)=>{const e=$(id);if(e)e.textContent=v;};
+ put('qaBalance','$'+qa.balance.toFixed(2));put('qaFloating',(floating>=0?'+$':'-$')+Math.abs(floating).toFixed(2));put('qaTrades',closed);put('qaWL',wins+' / '+losses);put('qaRate',closed?((wins/closed)*100).toFixed(1)+'%':'—');put('qaActive',qa.positions.length);put('qaNet',(net>=0?'+$':'-$')+Math.abs(net).toFixed(2));
+ const fl=$('qaFloating');if(fl)fl.style.color=floating>0?'var(--green)':floating<0?'var(--red)':'var(--txt)';
+ put('qaState',qa.positions.length?'BASKET ACTIVE':'SCANNING');
+ put('qaInfo','BTCUSD · M5 · Last price '+Number(price).toFixed(2)+' · EMA 20/50/200 + RSI 14 · Virtual lot/order '+qaLot().toFixed(2));
+ $('qaPositions').innerHTML=qa.positions.length?qa.positions.map(p=>'<div class="history"><b class="'+(p.dir===1?'buy':'sell')+'">'+(p.dir===1?'BUY':'SELL')+'</b> · Entry '+p.entry.toFixed(2)+' · Lot '+p.lot.toFixed(2)+' · SL '+p.sl.toFixed(2)+' · TP '+p.tp.toFixed(2)+'</div>').join(''):'Hakuna position iliyo wazi.';
+ $('qaHistory').innerHTML=qa.history.length?qa.history.slice(0,12).map(x=>'<div class="history"><b class="'+(x.side==='BUY'?'buy':'sell')+'">'+x.side+'</b> · '+x.reason+'<br>Entry '+x.entry.toFixed(2)+' → Exit '+x.exit.toFixed(2)+' · '+x.lot.toFixed(2)+' lot · <b style="color:'+(x.pl>=0?'var(--green)':'var(--red)')+'">'+(x.pl>=0?'+$':'-$')+Math.abs(x.pl).toFixed(2)+'</b><br><span class="muted">'+x.time+'</span></div>').join(''):'Bado hakuna trade iliyofungwa.';
+ const vals=qa.equity.slice(-35);if(vals.length){const min=Math.min(...vals,QA_START),max=Math.max(...vals,QA_START),span=Math.max(0.01,max-min);$('qaEquity').innerHTML=vals.map(v=>'<div title="$'+v.toFixed(2)+'" style="flex:1;min-width:3px;height:'+Math.max(4,((v-min)/span)*100)+'px;background:'+(v>=QA_START?'var(--green)':'var(--red)')+';border-radius:3px 3px 0 0"></div>').join('');}
+}
+async function qaUpdate(){
+ try{
+  await ensureDerivConnection();
+  const sym=derivSymbols.find(x=>/BTCUSD|BTC\/USD/i.test(x.symbol+' '+x.name))||derivSymbols.find(x=>/bitcoin/i.test(x.name));
+  if(!sym)throw new Error('Deriv BTCUSD symbol haipatikani kwa sasa.');
+  const {bars}=await getBars(sym.symbol,'M5');if(!bars||bars.length<205)throw new Error('Inahitaji angalau 205 M5 candles.');
+  const last=bars.at(-1),price=last.c;qa.lastPrice=price;
+  const floating=qaFloating(price),equity=qa.balance+floating;
+  // Evaluate protective exits first, preserving source EA priority.
+  if(qa.positions.length&&floating<=-equity*0.08){qaCloseAll(price,'BASKET LOSS 8%');}
+  else if(qa.positions.length){const lots=qa.positions.reduce((s,p)=>s+p.lot,0);if(floating>=lots*40)qaCloseAll(price,'BASKET TARGET');}
+  // Individual protective SL/TP simulation.
+  if(qa.positions.length){const survivors=[];for(const p of qa.positions){const hitSL=p.dir===1?price<=p.sl:price>=p.sl,hitTP=p.dir===1?price>=p.tp:price<=p.tp;if(hitSL||hitTP){const pl=(p.dir===1?price-p.entry:p.entry-price)*p.lot;qa.balance+=pl;qa.history.unshift({side:p.dir===1?'BUY':'SELL',entry:p.entry,exit:price,lot:p.lot,pl,reason:hitSL?'ORDER SL':'ORDER TP',time:new Date().toLocaleString()});}else survivors.push(p);}qa.positions=survivors;qa.history=qa.history.slice(0,35);}
+  const barTime=Number(last.t)||0;
+  if(barTime!==qa.lastBar){
+   const sig=qaSignal(bars);qa.lastBar=barTime;qa.signal=sig;
+   if(qa.positions.length&&sig!==0&&sig!==qa.positions[0].dir){
+    qaCloseAll(price,'TREND FLIP');
+    if(!qa.positions.length)qaOpenBatch(sig,price);
+   }else if(!qa.positions.length){if(sig!==0)qaOpenBatch(sig,price);}
+   else{
+    const dir=qa.positions[0].dir,lastEntry=qa.positions.reduce((a,p)=>p.time>a.time?p:a,qa.positions[0]).entry;
+    if(dir<0&&price<=lastEntry-20)qaOpenBatch(-1,price);
+    if(dir>0&&price>=lastEntry+20)qaOpenBatch(1,price);
+   }
+  }
+  qa.equity.push(qa.balance+qaFloating(price));qa.equity=qa.equity.slice(-45);qaSave();qaRender(price);
+ }catch(e){$('qaState').textContent='FEED WAIT';$('qaInfo').textContent='QUANTAM: '+e.message;}
+}
+setTimeout(qaUpdate,3500);setInterval(()=>{if(document.visibilityState==='visible')qaUpdate();},15000);
+
 </script>
 </body></html>
