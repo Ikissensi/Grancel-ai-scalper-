@@ -118,13 +118,27 @@ async function getBars(symbol,tf){
  const value={bars:mapped,source:'Deriv public candles · '+symbol,stamp:new Date(mapped.at(-1).t).toLocaleString()};barCache.set(cacheKey,{at:Date.now(),value});return value;
 }
 function addHistory(item){
- let h=getHistory(),key=x=>[x.market,x.tf,x.candleTime,x.side].join('|'),k=key(item),existing=h.find(x=>key(x)===k);
+ // Kila signal inawekwa kwa market + timeframe + candle + direction + mode.
+ // Hii inazuia scan inayojirudia kuandika duplicate, lakini hairuhusu mode tofauti kufutiana.
+ const h=getHistory();
+ const strategy=item.strategy||'SIGNAL';
+ const key=x=>[x.market||x.symbol,x.tf,x.candleTime,x.side,x.strategy||'SIGNAL'].join('|');
+ const k=key({...item,strategy});
+ const existing=h.find(x=>key(x)===k);
  if(existing){
   const terminal=['TP HIT','SL HIT','EXPIRED'].includes(existing.status);
-  if(!terminal){Object.assign(existing,item,{status:'ACTIVE'});saveHistory(h);renderHistory();}
+  if(!terminal){
+   Object.assign(existing,item,{strategy,status:'ACTIVE'});
+   saveHistory(h);
+   renderHistory();
+  }
   return false;
  }
- h.unshift(item);h=h.slice(0,1000);saveHistory(h);renderHistory();return true;
+ const saved={...item,strategy,status:item.status||'ACTIVE',savedAt:new Date().toISOString()};
+ h.unshift(saved);
+ saveHistory(h.slice(0,1000));
+ renderHistory();
+ return true;
 }
 function hasActiveSignal(){return getHistory().some(x=>x.status==='ACTIVE')}
 function marketGroup(x){const s=String(x.market||x.symbol||'').toUpperCase();if(s.includes('BTC'))return 'btc';if(s.includes('XAU')||s.includes('GOLD'))return 'xau';return 'other';}
@@ -132,7 +146,10 @@ function setGroupStats(prefix,items){
  const wins=items.filter(x=>x.status==='TP HIT').length,losses=items.filter(x=>x.status==='SL HIT').length,active=items.filter(x=>x.status==='ACTIVE').length,closed=wins+losses,net=items.reduce((a,x)=>a+(Number(x.resultPoints)||0),0);
  $(prefix+'Total').textContent=items.length;$(prefix+'Wins').textContent=wins;$(prefix+'Losses').textContent=losses;$(prefix+'Active').textContent=active;$(prefix+'Rate').textContent=closed?(wins/closed*100).toFixed(1)+'%':'—';$(prefix+'Net').textContent=(net>=0?'+':'')+net.toFixed(2);$(prefix+'Net').style.color=net>0?'var(--green)':net<0?'var(--red)':'var(--txt)';
 }
-function getHistory(){return JSON.parse(localStorage.getItem('grancelHistory')||'[]')}
+function getHistory(){
+ try{const value=JSON.parse(localStorage.getItem('grancelHistory')||'[]');return Array.isArray(value)?value:[];}
+ catch(e){return [];}
+}
 function saveHistory(h){localStorage.setItem('grancelHistory',JSON.stringify(h))}
 function renderStats(){
  const h=getHistory().filter(x=>x.strategy==='STRICT_MTF_CONFIRMED');
@@ -142,7 +159,7 @@ function renderStats(){
 }
 function renderHistory(){
  let h=getHistory();
- $('history').innerHTML=h.length?h.map(x=>{let st=x.status||'UNVERIFIED',cls=st==='TP HIT'?'win':st==='SL HIT'?'loss':st==='EXPIRED'||st==='UNVERIFIED'?'expired':'active';return `<div class="history"><b style="color:${x.side==='BUY'?'#22c995':'#ff637a'}">${x.side}</b> · ${x.market} ${x.tf} · ${x.strategy==='STRICT_MTF_CONFIRMED'?'MTF CONFIRMED':x.strategy==='STRICT_SWEEP_ONLY'?'SWEEP ONLY':'LEGACY'}<br>Entry ${x.entry} · SL ${x.sl} · TP ${x.tp}<br><span class="result ${cls}">${st}${x.resultPoints!==undefined?' · '+(Number(x.resultPoints)>=0?'+':'')+Number(x.resultPoints).toFixed(2)+' pts':''}</span><br><span class="muted">${x.time}</span></div>`}).join(''):'No confirmed signals saved.';
+ $('history').innerHTML=h.length?h.map(x=>{let st=x.status||'UNVERIFIED',cls=st==='TP HIT'?'win':st==='SL HIT'?'loss':st==='EXPIRED'||st==='UNVERIFIED'?'expired':'active';return `<div class="history"><b style="color:${x.side==='BUY'?'#22c995':'#ff637a'}">${x.side}</b> · ${x.market} ${x.tf} · ${x.strategy==='STRICT_MTF_CONFIRMED'?'MTF CONFIRMED':x.strategy==='STRICT_SWEEP_ONLY'?'SWEEP ONLY':'LEGACY'}<br>Entry ${x.entry} · SL ${x.sl} · TP ${x.tp}<br><span class="result ${cls}">${st}${x.resultPoints!==undefined?' · '+(Number(x.resultPoints)>=0?'+':'')+Number(x.resultPoints).toFixed(2)+' pts':''}</span><br><span class="muted">${x.time}</span></div>`}).join('') :'Hakuna signal iliyohifadhiwa bado.';
  renderStats();
 }
 function evaluateHistory(bars,market,tf){
