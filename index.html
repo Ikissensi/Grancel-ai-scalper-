@@ -9,7 +9,7 @@
 <section class="card"><div class="row">
 <div class="field"><label>MARKET</label><select id="market"><option value="DERIV_BTCUSD" selected>Deriv BTC/USD · Bitcoin</option></select></div>
 <div class="field"><label>TIMEFRAME</label><select id="tf"><option>M1</option><option selected>M5</option></select></div>
-<div class="field" style="max-width:130px"><label>ACTION</label><button class="go" id="analyze">ANALYZE</button></div>
+<div class="field" style="max-width:130px"><label>ACTION</label><button class="go" id="analyze">ANALYZE NOW</button></div><div class="field" style="max-width:155px"><label>AUTO MODE</label><button id="autoAnalyze">START AUTO ANALYZE</button></div>
 </div><div class="status" style="margin-top:12px"><span class="dot"></span><span id="status">Ready — press ANALYZE</span></div><div class="small" id="feednote"></div></section>
 
 
@@ -366,9 +366,26 @@ async function analyze(){
  $('reasons').innerHTML=why.map(x=>`<li>${x}</li>`).join('');$('status').textContent='Analysis complete · '+new Date().toLocaleTimeString();
  }catch(e){$('status').textContent=e.message+' — check internet or retry.';$('reasons').innerHTML='<li>No signal generated because reliable candle data could not be loaded.</li>';$('priceinfo').textContent='Feed unavailable';$('signalinfo').textContent='No data = no signal. Do not trade using old values.';$('plan').style.display='none'}finally{analysisBusy=false;if(rerunPending){rerunPending=false;setTimeout(analyze,150)}}
 }
-$('analyze').onclick=analyze;$('market').onchange=()=>{subscribeSelectedTick();analyze();refreshLivePrice()};$('tf').onchange=()=>{barCache.delete($('market').value+'_'+$('tf').value);analyze();};
+let autoAnalyzeEnabled=false,autoAnalyzeTimer=null;
+function setAutoAnalyze(enabled){
+ autoAnalyzeEnabled=enabled;
+ $('autoAnalyze').textContent=enabled?'STOP AUTO ANALYZE':'START AUTO ANALYZE';
+ $('autoAnalyze').className=enabled?'go':'';
+ $('status').textContent=enabled?'Auto Analyze ON · inachambua kila sekunde 15 na kila candle mpya.':'Auto Analyze imesimamishwa.';
+ if(autoAnalyzeTimer){clearInterval(autoAnalyzeTimer);autoAnalyzeTimer=null;}
+ if(enabled)autoAnalyzeTimer=setInterval(()=>{
+  if(document.visibilityState==='visible'){
+   barCache.delete($('market').value+'_'+$('tf').value);
+   analyze();
+  }
+ },15000);
+}
+$('autoAnalyze').onclick=()=>setAutoAnalyze(!autoAnalyzeEnabled);
+$('analyze').onclick=()=>{barCache.delete($('market').value+'_'+$('tf').value);analyze()};
+$('market').onchange=()=>{subscribeSelectedTick();barCache.delete($('market').value+'_'+$('tf').value);analyze();refreshLivePrice()};
+$('tf').onchange=()=>{barCache.delete($('market').value+'_'+$('tf').value);analyze();};
 $('clear').onclick=()=>{localStorage.removeItem('grancelHistory');lastSignalKey='';renderHistory()};
 $('notify').onclick=async()=>{if(!('Notification'in window)){alert('This browser does not support notifications.');return}let p=await Notification.requestPermission();$('notifyState').textContent=p==='granted'?'On':p;$('notify').textContent=p==='granted'?'NOTIFICATIONS ENABLED':'ENABLE NOTIFICATIONS'};
-renderHistory();ensureDerivConnection().then(()=>{subscribeSelectedTick();analyze();refreshLivePrice();if(!autoScanEnabled){autoScanEnabled=true;$('scanAll').textContent='STOP AUTO SCAN';scanAllMarketsLoopStart();}}).catch(e=>{$('feednote').textContent=e.message;$('status').textContent='Deriv connection failed';});setInterval(refreshLivePrice,15000);
+renderHistory();ensureDerivConnection().then(()=>{subscribeSelectedTick();analyze();refreshLivePrice();setAutoAnalyze(true);if(!autoScanEnabled){autoScanEnabled=true;$('scanAll').textContent='STOP AUTO SCAN';scanAllMarketsLoopStart();}}).catch(e=>{$('feednote').textContent=e.message;$('status').textContent='Deriv connection failed';});setInterval(refreshLivePrice,15000);
 </script>
 </body></html>
