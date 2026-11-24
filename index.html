@@ -22,7 +22,7 @@
 <div class="metric" style="margin:10px 0"><b>BTCUSD PERFORMANCE</b><div class="stats"><div class="stat"><span>SIGNALS</span><b id="btcTotal">0</b></div><div class="stat"><span>WINS</span><b id="btcWins">0</b></div><div class="stat"><span>LOSSES</span><b id="btcLosses">0</b></div><div class="stat"><span>ACTIVE</span><b id="btcActive">0</b></div><div class="stat"><span>WIN RATE</span><b id="btcRate">—</b></div></div><div class="small">Net points: <b id="btcNet">0.00</b></div></div>
 <div class="metric" style="margin:10px 0"><b>XAUUSD / GOLD PERFORMANCE</b><div class="stats"><div class="stat"><span>SIGNALS</span><b id="xauTotal">0</b></div><div class="stat"><span>WINS</span><b id="xauWins">0</b></div><div class="stat"><span>LOSSES</span><b id="xauLosses">0</b></div><div class="stat"><span>ACTIVE</span><b id="xauActive">0</b></div><div class="stat"><span>WIN RATE</span><b id="xauRate">—</b></div></div><div class="small">Net points: <b id="xauNet">0.00</b></div></div>
 <div class="metric" style="margin:10px 0"><b>OTHER MARKETS PERFORMANCE</b><div class="stats"><div class="stat"><span>SIGNALS</span><b id="otherTotal">0</b></div><div class="stat"><span>WINS</span><b id="otherWins">0</b></div><div class="stat"><span>LOSSES</span><b id="otherLosses">0</b></div><div class="stat"><span>ACTIVE</span><b id="otherActive">0</b></div><div class="stat"><span>WIN RATE</span><b id="otherRate">—</b></div></div><div class="small">Net points: <b id="otherNet">0.00</b></div></div>
-<p class="notice">BTCUSD, XAUUSD/GOLD na markets nyingine zinafuatiliwa tofauti. Win/Loss hutegemea TP/SL kuguswa kwenye candles zilizofungwa; ikiguswa zote kwenye candle moja, SL huhesabiwa kwanza. Hii ni candle-based tracking, si account P/L wala trade execution.</p></section>\n<section class="card"><div class="row" style="justify-content:space-between"><label style="margin:0">SIGNAL HISTORY</label><button id="clear" style="width:auto;padding:7px 11px;font-size:11px">CLEAR</button></div><div id="history" class="small muted" style="margin-top:10px">No confirmed signals saved.</div></section>
+<p class="notice">BTCUSD, XAUUSD/GOLD na markets nyingine zinafuatiliwa tofauti. Win/Loss hutegemea TP/SL kuguswa kwenye candles zilizofungwa; ikiguswa zote kwenye candle moja, SL huhesabiwa kwanza. Hii ni candle-based tracking, si account P/L wala trade execution.</p></section>\n<section class="card" id="simulatorCard"><label>VIRTUAL ACCOUNT SIMULATOR · $50 EACH</label><div class="small">Simulation ya signals za BTCUSD na XAUUSD pekee. Kila market ina account yake tofauti; hakuna pesa halisi wala trade inayofunguliwa.</div><div class="metric" style="margin:10px 0"><b>BTCUSD · 0.01 LOT</b><div class="stats"><div class="stat"><span>START BALANCE</span><b>$50.00</b></div><div class="stat"><span>CURRENT BALANCE</span><b id="simBtcBalance">$50.00</b></div><div class="stat"><span>REALIZED P/L</span><b id="simBtcPL">$0.00</b></div><div class="stat"><span>WINS / LOSSES</span><b id="simBtcWL">0 / 0</b></div><div class="stat"><span>ACTIVE</span><b id="simBtcActive">0</b></div><div class="stat"><span>CLOSED TRADES</span><b id="simBtcClosed">0</b></div></div></div><div class="metric" style="margin:10px 0"><b>XAUUSD / GOLD · 0.01 LOT</b><div class="stats"><div class="stat"><span>START BALANCE</span><b>$50.00</b></div><div class="stat"><span>CURRENT BALANCE</span><b id="simXauBalance">$50.00</b></div><div class="stat"><span>REALIZED P/L</span><b id="simXauPL">$0.00</b></div><div class="stat"><span>WINS / LOSSES</span><b id="simXauWL">0 / 0</b></div><div class="stat"><span>ACTIVE</span><b id="simXauActive">0</b></div><div class="stat"><span>CLOSED TRADES</span><b id="simXauClosed">0</b></div></div></div><p class="notice">P/L ni makadirio kwa kutumia assumption ya contract: BTC 0.01 lot ≈ $0.01 kwa kila $1 ya movement; Gold 0.01 lot ≈ $1 kwa kila $1 ya movement. Hakiki contract size na specifications za instrument kwenye akaunti yako ya Deriv kabla ya kutegemea hesabu hizi. Spread, commission na swap hazijajumuishwa. Matokeo yanahesabiwa TP/SL ikiguswa kwenye data ya candles.</p></section><section class="card"><div class="row" style="justify-content:space-between"><label style="margin:0">SIGNAL HISTORY</label><button id="clear" style="width:auto;padding:7px 11px;font-size:11px">CLEAR</button></div><div id="history" class="small muted" style="margin-top:10px">No confirmed signals saved.</div></section>
 <section class="card"><label>ALERTS</label><div class="row"><button id="notify" style="flex:1">ENABLE NOTIFICATIONS</button><span class="pill" id="notifyState">Off</span></div><p class="notice">Alerts fire as soon as a completed M1/M5 candle confirms the setup, while this page is open and notifications are allowed. Android may pause background tabs; keep this page active for fastest alerts.</p></section>
 <section class="card"><label>IMPORTANT — DATA & RISK</label><div class="notice">All selected instruments use Deriv candles and live ticks. Dropdown lists only currently open, non-suspended symbols returned by Deriv. This app only analyzes and sends signals; it does not place trades. When WAIT is shown, Entry/SL/TP are indicative reference levels only, not an active trade setup. Signals are not guaranteed profits. Always check spread, news, slippage and position size.</div><div class="pill">M1 / M5</div><div class="pill">Liquidity sweep</div><div class="pill">Liquidity sweep only</div><div class="pill">EMA 9/21 context</div><div class="pill">BOS structure</div><div class="pill">Liquidity zones</div><div class="pill">ATR-based SL</div></section>
 
@@ -117,28 +117,24 @@ async function getBars(symbol,tf){
  if(mapped.length<30)throw Error('Data ya candles haijakamilika kwa '+symbol);
  const value={bars:mapped,source:'Deriv public candles · '+symbol,stamp:new Date(mapped.at(-1).t).toLocaleString()};barCache.set(cacheKey,{at:Date.now(),value});return value;
 }
+function simContractFactor(item){
+ const group=marketGroup(item);
+ if(group==='btc')return 0.01;
+ if(group==='xau')return 1.00;
+ return 0;
+}
 function addHistory(item){
- // Kila signal inawekwa kwa market + timeframe + candle + direction + mode.
- // Hii inazuia scan inayojirudia kuandika duplicate, lakini hairuhusu mode tofauti kufutiana.
- const h=getHistory();
- const strategy=item.strategy||'SIGNAL';
+ const h=getHistory(),strategy=item.strategy||'SIGNAL',group=marketGroup(item);
+ if(group==='btc'||group==='xau'){item.simLot=0.01;item.simMultiplier=simContractFactor(item);item.simStatus='ACTIVE';}
  const key=x=>[x.market||x.symbol,x.tf,x.candleTime,x.side,x.strategy||'SIGNAL'].join('|');
- const k=key({...item,strategy});
- const existing=h.find(x=>key(x)===k);
+ const k=key({...item,strategy}),existing=h.find(x=>key(x)===k);
  if(existing){
   const terminal=['TP HIT','SL HIT','EXPIRED'].includes(existing.status);
-  if(!terminal){
-   Object.assign(existing,item,{strategy,status:'ACTIVE'});
-   saveHistory(h);
-   renderHistory();
-  }
+  if(!terminal){Object.assign(existing,item,{strategy,status:'ACTIVE'});saveHistory(h);renderHistory();}
   return false;
  }
  const saved={...item,strategy,status:item.status||'ACTIVE',savedAt:new Date().toISOString()};
- h.unshift(saved);
- saveHistory(h.slice(0,1000));
- renderHistory();
- return true;
+ h.unshift(saved);saveHistory(h.slice(0,1000));renderHistory();return true;
 }
 function hasActiveSignal(){return getHistory().some(x=>x.status==='ACTIVE')}
 function marketGroup(x){const s=String(x.market||x.symbol||'').toUpperCase();if(s.includes('BTC'))return 'btc';if(s.includes('XAU')||s.includes('GOLD'))return 'xau';return 'other';}
@@ -156,6 +152,20 @@ function renderStats(){
  setGroupStats('btc',h.filter(x=>marketGroup(x)==='btc'));
  setGroupStats('xau',h.filter(x=>marketGroup(x)==='xau'));
  setGroupStats('other',h.filter(x=>marketGroup(x)==='other'));
+ renderSimulator();
+}
+function renderSimulator(){
+ const all=getHistory(),configs=[{group:'btc',prefix:'simBtc'},{group:'xau',prefix:'simXau'}];
+ for(const c of configs){
+  const items=all.filter(x=>marketGroup(x)===c.group&&Number(x.simLot)===0.01);
+  const wins=items.filter(x=>x.status==='TP HIT').length,losses=items.filter(x=>x.status==='SL HIT').length;
+  const active=items.filter(x=>x.status==='ACTIVE').length,closed=wins+losses;
+  const pl=items.reduce((sum,x)=>sum+(Number(x.simPL)||0),0),balance=50+pl;
+  $(c.prefix+'Balance').textContent=(balance<0?'-':'')+'$'+Math.abs(balance).toFixed(2);
+  $(c.prefix+'PL').textContent=(pl>=0?'+$':'-$')+Math.abs(pl).toFixed(2);
+  $(c.prefix+'PL').style.color=pl>0?'var(--green)':pl<0?'var(--red)':'var(--txt)';
+  $(c.prefix+'WL').textContent=wins+' / '+losses;$(c.prefix+'Active').textContent=active;$(c.prefix+'Closed').textContent=closed;
+ }
 }
 function renderHistory(){
  let h=getHistory();
@@ -175,6 +185,10 @@ function evaluateHistory(bars,market,tf){
    if(hitSL||hitTP){
     if(hitSL){x.status='SL HIT';x.resultPoints=x.side==='BUY'?sl-entry:entry-sl;}
     else{x.status='TP HIT';x.resultPoints=x.side==='BUY'?tp-entry:entry-tp;}
+    if((marketGroup(x)==='btc'||marketGroup(x)==='xau')&&Number(x.simLot)===0.01){
+     if(!Number.isFinite(Number(x.simMultiplier)))x.simMultiplier=simContractFactor(x);
+     x.simPL=x.resultPoints*Number(x.simMultiplier);x.simStatus=x.status;
+    }
     x.closedAt=new Date(b.t).toISOString();changed=true;break;
    }
   }
