@@ -44,21 +44,13 @@
 
 <section class="card" id="quantamV2Card">
  <div class="row" style="justify-content:space-between;align-items:center"><div><b style="font-size:19px;color:var(--gold)">QUANTAM V2 · INDEPENDENT PAPER BOT</b><div class="small">BTCUSD · M1 FAST RE-ENTRY · Separate virtual $50</div></div><span class="pill" id="qv2State">STARTING…</span></div>
- <div class="stats">
-  <div class="stat"><span>START BALANCE</span><b>$50.00</b></div>
-  <div class="stat"><span>V2 BALANCE</span><b id="qv2Balance">$50.00</b></div>
-  <div class="stat"><span>FLOATING P/L</span><b id="qv2Float">$0.00</b></div>
-  <div class="stat"><span>ACTIVE TRADES</span><b id="qv2Active">0</b></div>
-  <div class="stat"><span>CLOSED TRADES</span><b id="qv2Closed">0</b></div>
-  <div class="stat"><span>WINS</span><b id="qv2Wins">0</b></div>
-  <div class="stat"><span>LOSSES</span><b id="qv2Losses">0</b></div>
-  <div class="stat"><span>WIN RATE</span><b id="qv2Rate">—</b></div>
-  <div class="stat"><span>NET P/L</span><b id="qv2Net">$0.00</b></div>
- </div>
- <div class="metric"><b id="qv2Connection" style="font-size:13px;color:var(--gold)">QUANTAM V2 PAPER MODE · CONNECTING</b><div class="small" id="qv2Updated" style="margin-top:6px">Inasoma BTCUSD M5 kutoka Deriv feed.</div></div>
- <hr><b>ACTIVE TRADES</b><div id="qv2Positions" class="small muted" style="margin-top:8px">Hakuna trade iliyo wazi.</div>
- <hr><b>TRADE HISTORY</b><div id="qv2History" class="small muted" style="margin-top:8px">Bado hakuna trade iliyofungwa.</div>
- <p class="notice">Hii ni V2 paper simulator ya BTCUSD M1 kutoka Deriv: EMA trend filter, ATR 14, SL 1.5×ATR, TP 2R, risk 0.5%, maximum positions 3. Inaongeza entry mpya kila M1 candle trend ikiendelea na nafasi zipo; ikifunga TP/SL, inaweza kuingia tena kwenye candle inayofuata. Wins/Losses huhesabiwa kwa simulator hii tu; si MT5 account trades wala real-money P/L. Data huhifadhiwa kwenye browser hii. Simu/browser ikilala, scan inaweza kusimama.</p>
+ <div class="metric" style="margin-bottom:12px"><b style="color:var(--gold)">BTCUSD · VIRTUAL $50</b><div class="stats">
+  <div class="stat"><span>BALANCE</span><b id="qv2Balance">$50.00</b></div><div class="stat"><span>FLOATING P/L</span><b id="qv2Float">$0.00</b></div><div class="stat"><span>ACTIVE</span><b id="qv2Active">0</b></div><div class="stat"><span>CLOSED</span><b id="qv2Closed">0</b></div><div class="stat"><span>WINS / LOSSES</span><b id="qv2WL">0 / 0</b></div><div class="stat"><span>WIN RATE</span><b id="qv2Rate">—</b></div><div class="stat"><span>NET P/L</span><b id="qv2Net">$0.00</b></div></div>
+ <div class="small" id="qv2Connection" style="color:var(--gold)">Connecting BTCUSD…</div><div class="small" id="qv2Updated"></div><hr><b>BTC ACTIVE TRADES</b><div id="qv2Positions" class="small muted" style="margin-top:8px">Hakuna trade iliyo wazi.</div><hr><b>BTC TRADE HISTORY</b><div id="qv2History" class="small muted" style="margin-top:8px">Bado hakuna trade iliyofungwa.</div></div>
+ <div class="metric"><b style="color:var(--gold)">XAUUSD / GOLD · INDEPENDENT VIRTUAL $50</b><div class="stats">
+  <div class="stat"><span>BALANCE</span><b id="qgBalance">$50.00</b></div><div class="stat"><span>FLOATING P/L</span><b id="qgFloat">$0.00</b></div><div class="stat"><span>ACTIVE</span><b id="qgActive">0</b></div><div class="stat"><span>CLOSED</span><b id="qgClosed">0</b></div><div class="stat"><span>WINS / LOSSES</span><b id="qgWL">0 / 0</b></div><div class="stat"><span>WIN RATE</span><b id="qgRate">—</b></div><div class="stat"><span>NET P/L</span><b id="qgNet">$0.00</b></div></div>
+ <div class="small" id="qgConnection" style="color:var(--gold)">Connecting GOLD…</div><div class="small" id="qgUpdated"></div><hr><b>GOLD ACTIVE TRADES</b><div id="qgPositions" class="small muted" style="margin-top:8px">Hakuna trade iliyo wazi.</div><hr><b>GOLD TRADE HISTORY</b><div id="qgHistory" class="small muted" style="margin-top:8px">Bado hakuna trade iliyofungwa.</div></div>
+ <p class="notice">Hii ni paper simulator ya BTCUSD na XAUUSD/GOLD kwa akaunti mbili tofauti za $50. Zote zinatumia M1, EMA 9/21, ATR 14, SL 1.5×ATR, TP 2R, risk 0.5%, maximum positions 3 kwa kila market. Inaingia tena kila candle mpya trend ikiendelea. Signals zinaweza kuchelewa au kutokuwepo ikiwa trend haijathibitishwa; si trades halisi za broker. Wins/Losses huhesabiwa kwa simulator hii tu; si MT5 account trades wala real-money P/L. Data huhifadhiwa kwenye browser hii. Simu/browser ikilala, scan inaweza kusimama.</p>
  <a href="./QUANTAM_V2.mq5" download style="display:block;text-align:center;padding:12px;border-radius:10px;background:#efbd50;color:#182131;font-weight:900;text-decoration:none">DOWNLOAD QUANTAM V2 · MT5 EA (.mq5)</a>
 </section></section>
 </section>
@@ -517,66 +509,50 @@ async function qaUpdate(){
 setTimeout(qaUpdate,3500);setInterval(()=>{if(document.visibilityState==='visible')qaUpdate();},15000);
 
 
-/* QUANTAM V2 independent browser paper simulator; mirrors the MT5 EA signal/risk rules. */
-const QV2_KEY='grancelQuantamV2Paper';
-const QV2_START=50, QV2_RISK=0.005, QV2_MAX=3;
-let qv2={balance:QV2_START,positions:[],history:[],lastBar:0,lastPrice:0,updated:0};
-try{const saved=JSON.parse(localStorage.getItem(QV2_KEY)||'null');if(saved&&typeof saved.balance==='number')qv2={...qv2,...saved};}catch(e){}
-function qv2Save(){localStorage.setItem(QV2_KEY,JSON.stringify(qv2));}
+/* QUANTAM V2: independent M1 paper engines for BTCUSD and GOLD. */
+const QV2_START=50,QV2_RISK=0.005,QV2_MAX=3;
+function qv2Load(key){try{const x=JSON.parse(localStorage.getItem(key)||'null');if(x&&typeof x.balance==='number')return x;}catch(e){}return {balance:QV2_START,positions:[],history:[],lastBar:0,lastPrice:0,updated:0};}
+let qv2=qv2Load('grancelQuantamV2BTC'),qg=qv2Load('grancelQuantamV2GOLD');
+function qv2Save(st,key){localStorage.setItem(key,JSON.stringify(st));}
 function qv2Ema(a,n){const k=2/(n+1);let v=a[0];for(let i=1;i<a.length;i++)v=a[i]*k+v*(1-k);return v;}
-function qv2Rsi(a,n=14){let g=0,l=0;for(let i=a.length-n;i<a.length;i++){const d=a[i]-a[i-1];if(d>0)g+=d;else l-=d;}return l===0?100:100-100/(1+g/l);}
 function qv2Atr(b,n=14){let sum=0;for(let i=b.length-n;i<b.length;i++){const p=b[i-1],x=b[i];sum+=Math.max(x.h-x.l,Math.abs(x.h-p.c),Math.abs(x.l-p.c));}return sum/n;}
-function qv2Signal(b){const c=b.map(x=>x.c);if(c.length<205)return 0;const f=qv2Ema(c.slice(-205),20),m=qv2Ema(c.slice(-205),50),sl=qv2Ema(c.slice(-205),200),close=c.at(-1);if(f>m&&close>m&&close>sl)return 1;if(f<m&&close<m&&close<sl)return -1;return 0;}
-function qv2Floating(price){return qv2.positions.reduce((sum,p)=>sum+(p.dir===1?price-p.entry:p.entry-price)/p.dist*p.risk,0);}
-function qv2Close(p,price,reason){const pl=(p.dir===1?price-p.entry:p.entry-price)/p.dist*p.risk;qv2.balance+=pl;qv2.history.unshift({side:p.dir===1?'BUY':'SELL',entry:p.entry,exit:price,pl,risk:p.risk,reason,time:new Date().toLocaleString()});qv2.history=qv2.history.slice(0,60);}
-function qv2Render(price){
- const floating=qv2Floating(price),closed=qv2.history.length,wins=qv2.history.filter(x=>x.pl>0).length,losses=closed-wins,net=qv2.balance-QV2_START;
- const put=(id,v)=>{const e=$(id);if(e)e.textContent=v;};
- put('qv2Balance','$'+qv2.balance.toFixed(2));put('qv2Float',(floating>=0?'+$':'-$')+Math.abs(floating).toFixed(2));put('qv2Active',qv2.positions.length);put('qv2Closed',closed);put('qv2Wins',wins);put('qv2Losses',losses);put('qv2Rate',closed?(wins/closed*100).toFixed(1)+'%':'—');put('qv2Net',(net>=0?'+$':'-$')+Math.abs(net).toFixed(2));
- const el=$('qv2Float');if(el)el.style.color=floating>0?'var(--green)':floating<0?'var(--red)':'var(--txt)';
- put('qv2State',qv2.positions.length?'TRADES ACTIVE':'SCANNING');
- put('qv2Connection','QUANTAM V2 PAPER MODE · RUNNING');
- put('qv2Updated','Deriv BTCUSD · M1 FAST MODE · Last price '+Number(price).toFixed(2)+' · Updated '+new Date().toLocaleTimeString());
- $('qv2Positions').innerHTML=qv2.positions.length?qv2.positions.map(p=>'<div class="history"><b class="'+(p.dir===1?'buy':'sell')+'">'+(p.dir===1?'BUY':'SELL')+'</b> · Entry '+p.entry.toFixed(2)+' · SL '+p.sl.toFixed(2)+' · TP '+p.tp.toFixed(2)+' · Risk $'+p.risk.toFixed(2)+' · Floating '+((p.dir===1?price-p.entry:p.entry-price)/p.dist*p.risk>=0?'+$':'-$')+Math.abs((p.dir===1?price-p.entry:p.entry-price)/p.dist*p.risk).toFixed(2)+'</div>').join(''):'Hakuna trade iliyo wazi.';
- $('qv2History').innerHTML=qv2.history.length?qv2.history.slice(0,15).map(x=>'<div class="history"><b class="'+(x.side==='BUY'?'buy':'sell')+'">'+x.side+'</b> · <span class="result '+(x.pl>0?'win':'loss')+'">'+(x.pl>0?'WIN':'LOSS')+'</span><br>Entry '+x.entry.toFixed(2)+' → Exit '+x.exit.toFixed(2)+' · <b style="color:'+(x.pl>=0?'var(--green)':'var(--red)')+'">'+(x.pl>=0?'+$':'-$')+Math.abs(x.pl).toFixed(2)+'</b> · '+x.reason+'<br><span class="muted">'+x.time+'</span></div>').join(''):'Bado hakuna trade iliyofungwa.';
+function qv2Signal(b){const c=b.map(x=>x.c);if(c.length<60)return 0;const f=qv2Ema(c.slice(-60),9),m=qv2Ema(c.slice(-60),21),close=c.at(-1);if(f>m&&close>m)return 1;if(f<m&&close<m)return -1;return 0;}
+function qv2Floating(st,price){return st.positions.reduce((sum,p)=>sum+(p.dir===1?price-p.entry:p.entry-price)/p.dist*p.risk,0);}
+function qv2Close(st,p,price,reason){const pl=(p.dir===1?price-p.entry:p.entry-price)/p.dist*p.risk;st.balance+=pl;st.history.unshift({side:p.dir===1?'BUY':'SELL',entry:p.entry,exit:price,pl,risk:p.risk,reason,time:new Date().toLocaleString()});st.history=st.history.slice(0,60);}
+function qv2Render(st,price,prefix,label){
+ const floating=qv2Floating(st,price),closed=st.history.length,wins=st.history.filter(x=>x.pl>0).length,losses=closed-wins,net=st.balance-QV2_START,put=(id,v)=>{const e=$(prefix+id);if(e)e.textContent=v;};
+ put('Balance','$'+st.balance.toFixed(2));put('Float',(floating>=0?'+$':'-$')+Math.abs(floating).toFixed(2));put('Active',st.positions.length);put('Closed',closed);put('WL',wins+' / '+losses);put('Rate',closed?(wins/closed*100).toFixed(1)+'%':'—');put('Net',(net>=0?'+$':'-$')+Math.abs(net).toFixed(2));
+ put('Connection',label+' · LIVE PAPER SCAN');put('Updated','M1 · '+Number(price).toFixed(2)+' · '+new Date().toLocaleTimeString());
+ const pos=$(prefix+'Positions'),hist=$(prefix+'History');
+ if(pos)pos.innerHTML=st.positions.length?st.positions.map(p=>'<div class="history"><b class="'+(p.dir===1?'buy':'sell')+'">'+(p.dir===1?'BUY':'SELL')+'</b> · Entry '+p.entry.toFixed(2)+' · SL '+p.sl.toFixed(2)+' · TP '+p.tp.toFixed(2)+' · Floating '+((p.dir===1?price-p.entry:p.entry-price)/p.dist*p.risk>=0?'+$':'-$')+Math.abs((p.dir===1?price-p.entry:p.entry-price)/p.dist*p.risk).toFixed(2)+'</div>').join(''):'Hakuna trade iliyo wazi.';
+ if(hist)hist.innerHTML=st.history.length?st.history.slice(0,10).map(x=>'<div class="history"><b class="'+(x.side==='BUY'?'buy':'sell')+'">'+x.side+'</b> · <span class="result '+(x.pl>0?'win':'loss')+'">'+(x.pl>0?'WIN':'LOSS')+'</span><br>'+x.entry.toFixed(2)+' → '+x.exit.toFixed(2)+' · <b style="color:'+(x.pl>=0?'var(--green)':'var(--red)')+'">'+(x.pl>=0?'+$':'-$')+Math.abs(x.pl).toFixed(2)+'</b> · '+x.reason+'<br><span class="muted">'+x.time+'</span></div>').join(''):'Bado hakuna trade iliyofungwa.';
+}
+async function qv2RunOne(st,symbol,key,prefix,label){
+ const {bars}=await getBars(symbol,'M1');if(!bars||bars.length<60)throw new Error('Candles hazitoshi kwa '+label);
+ const last=bars.at(-1),price=last.c;
+ const survivors=[];for(const p of st.positions){const hitSL=p.dir===1?last.l<=p.sl:last.h>=p.sl,hitTP=p.dir===1?last.h>=p.tp:last.l<=p.tp;if(hitSL||hitTP)qv2Close(st,p,hitSL?p.sl:p.tp,hitSL?'STOP LOSS':'TAKE PROFIT');else survivors.push(p);}st.positions=survivors;
+ const bt=Number(last.t)||0;
+ if(bt!==st.lastBar){st.lastBar=bt;const sig=qv2Signal(bars),atr=qv2Atr(bars,14);
+  if(sig){st.positions.filter(p=>p.dir!==sig).forEach(p=>qv2Close(st,p,price,'OPPOSITE SIGNAL'));st.positions=st.positions.filter(p=>p.dir===sig);
+   if(st.positions.length<QV2_MAX&&atr>0){const entry=price,dist=atr*1.5,risk=Math.max(0,st.balance)*QV2_RISK;if(risk>0)st.positions.push({dir:sig,entry,dist,sl:sig===1?entry-dist:entry+dist,tp:sig===1?entry+dist*2:entry-dist*2,risk,time:bt});}
+  }
+ }
+ st.lastPrice=price;st.updated=Date.now();qv2Save(st,key);qv2Render(st,price,prefix,label);
 }
 async function qv2Update(){
  try{
   await ensureDerivConnection();
-  const sym=derivSymbols.find(x=>/BTCUSD|BTC\/USD/i.test(x.symbol+' '+x.name))||derivSymbols.find(x=>/bitcoin/i.test(x.name));
-  if(!sym)throw new Error('BTCUSD haipatikani kwenye Deriv feed.');
-  const {bars}=await getBars(sym.symbol,'M1');if(!bars||bars.length<205)throw new Error('Inahitaji 205 M1 candles ili kuanza.');
-  const last=bars.at(-1),price=last.c;qv2.lastPrice=price;
-  // Check exits using the latest completed candle; if both levels are touched, conservatively count SL first.
-  const survivors=[];
-  for(const p of qv2.positions){
-   const hitSL=p.dir===1?last.l<=p.sl:last.h>=p.sl,hitTP=p.dir===1?last.h>=p.tp:last.l<=p.tp;
-   if(hitSL||hitTP)qv2Close(p,hitSL?p.sl:p.tp,hitSL?'STOP LOSS':'TAKE PROFIT');else survivors.push(p);
-  }
-  qv2.positions=survivors;
-  const bt=Number(last.t)||0;
-  if(bt!==qv2.lastBar){
-   qv2.lastBar=bt;
-   const sig=qv2Signal(bars),atr=qv2Atr(bars,14);
-   if(sig!==0){
-    const opposite=qv2.positions.filter(p=>p.dir!==sig);
-    opposite.forEach(p=>qv2Close(p,price,'OPPOSITE SIGNAL'));
-    qv2.positions=qv2.positions.filter(p=>p.dir===sig);
-    // Fast re-entry: open another independent position on every new M1 candle while the trend remains valid.
-    if(qv2.positions.length<QV2_MAX&&atr>0){
-     const entry=price,dist=atr*1.5,risk=Math.max(0,qv2.balance)*QV2_RISK;
-     if(risk>0)qv2.positions.push({dir:sig,entry,dist,sl:sig===1?entry-dist:entry+dist,tp:sig===1?entry+dist*2:entry-dist*2,risk,time:bt});
-    }
-   }
-  }
-  qv2.updated=Date.now();qv2Save();qv2Render(price);
- }catch(e){
-  $('qv2State').textContent='FEED WAIT';
-  $('qv2Connection').textContent='QUANTAM V2 · WAITING FOR MARKET DATA';
-  $('qv2Updated').textContent=e.message+' · Angalia internet kisha refresh.';
- }
+  const btc=derivSymbols.find(x=>/BTCUSD|BTC\/USD/i.test(x.symbol+' '+x.name))||derivSymbols.find(x=>/bitcoin/i.test(x.name));
+  if(!btc)throw new Error('BTCUSD haipatikani kwenye Deriv.');
+  await qv2RunOne(qv2,btc.symbol,'grancelQuantamV2BTC','qv2','BTCUSD');
+ }catch(e){$('qv2Connection').textContent='BTCUSD · '+e.message;}
+ try{
+  const gold=derivSymbols.find(x=>/XAUUSD|GOLD/i.test(x.symbol+' '+x.name));
+  if(!gold)throw new Error('Deriv haijaorodhesha XAUUSD/GOLD iliyo wazi kwa sasa.');
+  await qv2RunOne(qg,gold.symbol,'grancelQuantamV2GOLD','qg','GOLD '+gold.symbol);
+ }catch(e){$('qgConnection').textContent='GOLD · '+e.message;}
 }
-setTimeout(qv2Update,5000);
+setTimeout(qv2Update,2500);
 setInterval(()=>{if(document.visibilityState==='visible')qv2Update();},15000);
 
 </script>
