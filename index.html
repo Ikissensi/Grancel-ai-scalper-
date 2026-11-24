@@ -14,7 +14,7 @@
 
 
 <section class="card" id="mtfCard"><b>MULTI-TIMEFRAME ANALYSIS</b><div class="small">Mifumo miwili tofauti: independent sweep na confirmation.</div><hr><b class="buy">1 · INDEPENDENT SWEEP SIGNALS</b><div class="small">Kila timeframe inatoa signal yake kwa rule ya sweep pekee.</div><div id="mtfIndependent" class="small muted" style="margin-top:9px">Inasubiri analysis…</div><hr><b class="wait">2 · CONFIRMED SIGNALS</b><div class="small">M1/M5 zinahitaji M15 na H1 zikubaliane; M15 inahitaji H1 ithibitishe.</div><div id="mtfConfirmed" class="small muted" style="margin-top:9px">Inasubiri confirmation…</div></section>
-<section class="card" id="scannerCard"><div class="row" style="justify-content:space-between;align-items:center"><div><b>ALL-MARKET ENTRY SCANNER</b><div class="small">Inachunguza markets zote; inaonyesha entries za strict sweep zilizothibitishwa na higher timeframes.</div></div><button class="go" id="scanAll" style="width:auto">SCAN ALL MARKETS</button></div><div class="status" id="scanStatus" style="margin-top:10px">Ready · Bonyeza SCAN ALL MARKETS kutafuta BUY/SELL setups.</div><div id="scanResults" class="small muted" style="margin-top:10px">Hakuna scan iliyofanyika bado.</div></section>
+<section class="card" id="scannerCard"><div class="row" style="justify-content:space-between;align-items:center"><div><b>ALL-MARKET ENTRY SCANNER</b><div class="small">Inachunguza markets zote; inaonyesha kila entry ya strict liquidity sweep bila kusubiri higher-timeframe confirmation.</div></div><button class="go" id="scanAll" style="width:auto">SCAN ALL MARKETS</button></div><div class="status" id="scanStatus" style="margin-top:10px">Ready · Bonyeza SCAN ALL MARKETS kutafuta BUY/SELL setups.</div><div id="scanResults" class="small muted" style="margin-top:10px">Hakuna scan iliyofanyika bado.</div></section>
 <section class="card" id="chartCard"><div class="row" style="justify-content:space-between;align-items:center"><div><b style="font-size:17px">LIVE CANDLE ANALYSIS</b><div class="small" id="chartMeta">Candlestick chart · M1 / M5</div></div><span class="pill" id="chartState">WAITING FOR DATA</span></div><div id="marketChart" style="height:300px;width:100%;margin-top:12px"></div><div class="grid" style="margin-top:10px"><div class="metric"><span class="small">LIQUIDITY HIGH</span><b id="liqHigh">—</b></div><div class="metric"><span class="small">LIQUIDITY LOW</span><b id="liqLow">—</b></div><div class="metric"><span class="small">MARKET STRUCTURE</span><b id="marketStructure">—</b></div><div class="metric"><span class="small">TREND BIAS</span><b id="trendBias">—</b></div></div></section>
 <section class="card"><label>MARKET PRICE</label><div class="price" id="price">—</div><div class="small" id="priceinfo">No data loaded</div><hr><label>GRANCEL SIGNAL STATUS</label><div id="signal" class="signal wait">WAIT</div><div class="small" id="signalinfo">Direction is not confirmed. Provisional Entry, SL and TP are shown for planning only.</div><div id="plan"><hr><div class="grid"><div class="metric"><span class="small" id="entryLabel">PROVISIONAL ENTRY</span><b id="entry">—</b></div><div class="metric"><span class="small" id="slLabel">PROVISIONAL STOP LOSS</span><b id="sl">—</b></div><div class="metric"><span class="small" id="tpLabel">TP · PREVIOUS BODY</span><b id="tp">—</b></div><div class="metric"><span class="small">RISK DISTANCE</span><b id="risk">—</b></div></div></div><hr><div class="grid"><div class="metric"><span class="small">RSI (14)</span><b id="rsi">—</b></div><div class="metric"><span class="small">EMA 9 / 21</span><b id="ema">—</b></div><div class="metric"><span class="small">STRUCTURE</span><b id="structure">—</b></div><div class="metric"><span class="small">CANDLES</span><b id="count">—</b></div></div></section>
 <section class="card"><label>ANALYSIS REASONS</label><ul id="reasons"><li>Press ANALYZE to retrieve candles.</li></ul></section>
@@ -152,7 +152,7 @@ function getHistory(){
 }
 function saveHistory(h){localStorage.setItem('grancelHistory',JSON.stringify(h))}
 function renderStats(){
- const h=getHistory().filter(x=>x.strategy==='STRICT_MTF_CONFIRMED');
+ const h=getHistory().filter(x=>x.strategy==='STRICT_MTF_CONFIRMED'||x.strategy==='STRICT_SWEEP_ONLY');
  setGroupStats('btc',h.filter(x=>marketGroup(x)==='btc'));
  setGroupStats('xau',h.filter(x=>marketGroup(x)==='xau'));
  setGroupStats('other',h.filter(x=>marketGroup(x)==='other'));
@@ -274,11 +274,11 @@ async function scanMarketsOnce(){
        if(!Number.isFinite(tp)){tp=entry-Math.max(av*.5,pad*2);tpMethod='ATR';}
        dist=sl-entry;if(!(sl>entry&&tp<entry&&dist>0))side='WAIT';
       }
-      if(side!=='WAIT'&&await scannerMtfConfirmed(item.symbol,tf,side)){
-      const signalItem={side,market:item.symbol,tf,entry:nfmt(entry),sl:nfmt(sl),tp:nfmt(tp),time:new Date(last.t).toLocaleString(),candleTime:last.t,status:'ACTIVE',strategy:'STRICT_MTF_CONFIRMED'};
+      if(side!=='WAIT'){
+      const signalItem={side,market:item.symbol,tf,entry:nfmt(entry),sl:nfmt(sl),tp:nfmt(tp),time:new Date(last.t).toLocaleString(),candleTime:last.t,status:'ACTIVE',strategy:'STRICT_SWEEP_ONLY'};
       if(addHistory(signalItem)){
        found.push({symbol:item.symbol,name:item.name,side,tf,entry,sl,tp,tpMethod,time:last.t});renderFound();
-       notifySignal('GRANCEL CONFIRMED '+side+' '+item.symbol,tf+' · MTF confirmed · Entry '+nfmt(entry)+' · SL '+nfmt(sl)+' · TP '+nfmt(tp));
+       notifySignal('GRANCEL SWEEP '+side+' '+item.symbol,tf+' · Independent sweep entry · Entry '+nfmt(entry)+' · SL '+nfmt(sl)+' · TP '+nfmt(tp));
       }
      }
      }
