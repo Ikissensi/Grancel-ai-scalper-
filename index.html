@@ -440,11 +440,12 @@ $('clear').onclick=()=>{localStorage.removeItem('grancelHistory');lastSignalKey=
 $('notify').onclick=async()=>{if(!('Notification'in window)){alert('This browser does not support notifications.');return}let p=await Notification.requestPermission();$('notifyState').textContent=p==='granted'?'On':p;$('notify').textContent=p==='granted'?'NOTIFICATIONS ENABLED':'ENABLE NOTIFICATIONS'};
 renderHistory();ensureDerivConnection().then(()=>{subscribeSelectedTick();analyze();refreshLivePrice();setAutoAnalyze(true);if(!autoScanEnabled){autoScanEnabled=true;$('scanAll').textContent='STOP AUTO SCAN';scanAllMarketsLoopStart();}}).catch(e=>{$('feednote').textContent=e.message;$('status').textContent='Deriv connection failed';});setInterval(refreshLivePrice,15000);
 
-/* QUANTAM virtual implementation of Quant_Flipper_Basket.mq5 rules */
-const QA_KEY='grancelQuantamV1';
+/* QUANTAM 1: corrected independent basket simulator */
+const QA_KEY='grancelQuantamV1_fixed1';
 const QA_START=50;
-let qa={balance:QA_START,positions:[],history:[],equity:[QA_START],lastBar:0,lastPrice:0,signal:0};
-try{const saved=JSON.parse(localStorage.getItem(QA_KEY)||'null');if(saved&&saved.balance!==undefined)qa={...qa,...saved};}catch(e){}
+let qa={balance:QA_START,positions:[],history:[],equity:[QA_START],lastBar:0,lastPrice:0,signal:0,basketBase:null};
+let qaBusy=false;
+try{const saved=JSON.parse(localStorage.getItem(QA_KEY)||'null');if(saved&&typeof saved.balance==='number')qa={...qa,...saved};}catch(e){}
 function qaSave(){localStorage.setItem(QA_KEY,JSON.stringify(qa));}
 function qaEma(values,period){const k=2/(period+1);let v=values[0];for(let i=1;i<values.length;i++)v=values[i]*k+v*(1-k);return v;}
 function qaRsi(values,period=14){let gain=0,loss=0;for(let i=values.length-period;i<values.length;i++){const d=values[i]-values[i-1];if(d>0)gain+=d;else loss-=d;}return loss===0?100:100-100/(1+gain/loss);}
@@ -455,59 +456,71 @@ function qaSignal(bars){
  if(f<s&&close<t&&r>25)return -1;
  return 0;
 }
-function qaLot(){const raw=qa.balance/1000*0.05;return Math.max(0.01,Math.min(5,Math.floor(raw/0.01)*0.01));}
+function qaLot(){if(qa.balance<=0)return 0;const raw=qa.balance/1000*0.05;return Math.max(0.01,Math.min(5,Math.floor(raw/0.01)*0.01));}
 function qaFloating(price){return qa.positions.reduce((sum,p)=>sum+(p.dir===1?(price-p.entry):(p.entry-price))*p.lot,0);}
 function qaCloseAll(price,reason){
  if(!qa.positions.length)return;
  for(const p of qa.positions){const pl=(p.dir===1?(price-p.entry):(p.entry-price))*p.lot;qa.balance+=pl;qa.history.unshift({side:p.dir===1?'BUY':'SELL',entry:p.entry,exit:price,lot:p.lot,pl,reason,time:new Date().toLocaleString()});}
- qa.positions=[];qa.history=qa.history.slice(0,35);qa.equity.push(qa.balance);qa.equity=qa.equity.slice(-45);
+ qa.positions=[];qa.basketBase=null;qa.history=qa.history.slice(0,35);qa.equity.push(qa.balance);qa.equity=qa.equity.slice(-45);
 }
 function qaOpenBatch(dir,price){
- const lot=qaLot();
- for(let i=0;i<3;i++)qa.positions.push({dir,entry:price,lot,sl:dir===1?price-300:price+300,tp:dir===1?price+80:price-80,time:Date.now()});
+ if(qa.positions.length||qa.balance<=0)return;
+ const lot=qaLot();if(!lot)return;
+ qa.basketBase=qa.balance;
+ for(let i=0;i<3;i++)qa.positions.push({dir,entry:price,lot,sl:dir===1?price-300:price+300,tp:dir===1?price+80:price-80,time:Date.now()+i});
 }
 function qaRender(price){
- const floating=qaFloating(price),equity=qa.balance+floating,closed=qa.history.length,wins=qa.history.filter(x=>x.pl>0).length,losses=qa.history.filter(x=>x.pl<=0).length,net=qa.balance-QA_START;
+ const floating=qaFloating(price),closed=qa.history.length,wins=qa.history.filter(x=>x.pl>0).length,losses=qa.history.filter(x=>x.pl<=0).length,net=qa.balance-QA_START;
  const put=(id,v)=>{const e=$(id);if(e)e.textContent=v;};
  put('qaBalance','$'+qa.balance.toFixed(2));put('qaFloating',(floating>=0?'+$':'-$')+Math.abs(floating).toFixed(2));put('qaTrades',closed);put('qaWL',wins+' / '+losses);put('qaRate',closed?((wins/closed)*100).toFixed(1)+'%':'—');put('qaActive',qa.positions.length);put('qaNet',(net>=0?'+$':'-$')+Math.abs(net).toFixed(2));
  const fl=$('qaFloating');if(fl)fl.style.color=floating>0?'var(--green)':floating<0?'var(--red)':'var(--txt)';
- put('qaState',qa.positions.length?'BASKET ACTIVE':'SCANNING');
- put('qaInfo','BTCUSD · M5 · Last price '+Number(price).toFixed(2)+' · EMA 20/50/200 + RSI 14 · Virtual lot/order '+qaLot().toFixed(2));
- $('qaPositions').innerHTML=qa.positions.length?qa.positions.map(p=>'<div class="history"><b class="'+(p.dir===1?'buy':'sell')+'">'+(p.dir===1?'BUY':'SELL')+'</b> · Entry '+p.entry.toFixed(2)+' · Lot '+p.lot.toFixed(2)+' · SL '+p.sl.toFixed(2)+' · TP '+p.tp.toFixed(2)+'</div>').join(''):'Hakuna position iliyo wazi.';
+ put('qaState',qa.balance<=0?'STOPPED · BALANCE $0':qa.positions.length?'BASKET ACTIVE':'SCANNING');
+ put('qaInfo','BTCUSD · M5 · Last price '+Number(price).toFixed(2)+' · EMA 20/50/200 + RSI 14 · Virtual lot/order '+qaLot().toFixed(2)+' · 8% basket risk');
+ $('qaPositions').innerHTML=qa.positions.length?qa.positions.map(p=>'<div class="history"><b class="'+(p.dir===1?'buy':'sell')+'">'+(p.dir===1?'BUY':'SELL')+'</b> · Entry '+p.entry.toFixed(2)+' · Lot '+p.lot.toFixed(2)+' · SL '+p.sl.toFixed(2)+' · TP '+p.tp.toFixed(2)+'</div>').join(''):'Hakuna position wazi.';
  $('qaHistory').innerHTML=qa.history.length?qa.history.slice(0,12).map(x=>'<div class="history"><b class="'+(x.side==='BUY'?'buy':'sell')+'">'+x.side+'</b> · '+x.reason+'<br>Entry '+x.entry.toFixed(2)+' → Exit '+x.exit.toFixed(2)+' · '+x.lot.toFixed(2)+' lot · <b style="color:'+(x.pl>=0?'var(--green)':'var(--red)')+'">'+(x.pl>=0?'+$':'-$')+Math.abs(x.pl).toFixed(2)+'</b><br><span class="muted">'+x.time+'</span></div>').join(''):'Bado hakuna trade iliyofungwa.';
  const vals=qa.equity.slice(-35);if(vals.length){const min=Math.min(...vals,QA_START),max=Math.max(...vals,QA_START),span=Math.max(0.01,max-min);$('qaEquity').innerHTML=vals.map(v=>'<div title="$'+v.toFixed(2)+'" style="flex:1;min-width:3px;height:'+Math.max(4,((v-min)/span)*100)+'px;background:'+(v>=QA_START?'var(--green)':'var(--red)')+';border-radius:3px 3px 0 0"></div>').join('');}
 }
 async function qaUpdate(){
+ if(qaBusy)return;qaBusy=true;
  try{
   await ensureDerivConnection();
-  const sym=derivSymbols.find(x=>/BTCUSD|BTC\/USD/i.test(x.symbol+' '+x.name))||derivSymbols.find(x=>/bitcoin/i.test(x.name));
+  const sym=derivSymbols.find(x=>/BTCUSD|BTC\\/USD/i.test(x.symbol+' '+x.name))||derivSymbols.find(x=>/bitcoin/i.test(x.name));
   if(!sym)throw new Error('Deriv BTCUSD symbol haipatikani kwa sasa.');
   const {bars}=await getBars(sym.symbol,'M5');if(!bars||bars.length<205)throw new Error('Inahitaji angalau 205 M5 candles.');
   const last=bars.at(-1),price=last.c;qa.lastPrice=price;
-  const floating=qaFloating(price),equity=qa.balance+floating;
-  // Evaluate protective exits first, preserving source EA priority.
-  if(qa.positions.length&&floating<=-equity*0.08){qaCloseAll(price,'BASKET LOSS 8%');}
-  else if(qa.positions.length){const lots=qa.positions.reduce((s,p)=>s+p.lot,0);if(floating>=lots*40)qaCloseAll(price,'BASKET TARGET');}
-  // Individual protective SL/TP simulation.
-  if(qa.positions.length){const survivors=[];for(const p of qa.positions){const hitSL=p.dir===1?price<=p.sl:price>=p.sl,hitTP=p.dir===1?price>=p.tp:price<=p.tp;if(hitSL||hitTP){const pl=(p.dir===1?price-p.entry:p.entry-price)*p.lot;qa.balance+=pl;qa.history.unshift({side:p.dir===1?'BUY':'SELL',entry:p.entry,exit:price,lot:p.lot,pl,reason:hitSL?'ORDER SL':'ORDER TP',time:new Date().toLocaleString()});}else survivors.push(p);}qa.positions=survivors;qa.history=qa.history.slice(0,35);}
+  const floating=qaFloating(price);
+  // Basket loss is measured against the positive balance when the basket began, never negative equity.
+  const riskBase=Number(qa.basketBase)>0?Number(qa.basketBase):QA_START;
+  if(qa.positions.length&&floating<0&&floating<=-(riskBase*0.08)){qaCloseAll(price,'BASKET LOSS 8%');}
+  else if(qa.positions.length){const lots=qa.positions.reduce((sum,p)=>sum+p.lot,0);if(floating>0&&floating>=lots*40)qaCloseAll(price,'BASKET TARGET');}
+  // Check individual SL/TP only while positions remain open.
+  if(qa.positions.length){
+   const survivors=[];
+   for(const p of qa.positions){
+    const hitSL=p.dir===1?price<=p.sl:price>=p.sl,hitTP=p.dir===1?price>=p.tp:price<=p.tp;
+    if(hitSL||hitTP){const pl=(p.dir===1?price-p.entry:p.entry-price)*p.lot;qa.balance+=pl;qa.history.unshift({side:p.dir===1?'BUY':'SELL',entry:p.entry,exit:price,lot:p.lot,pl,reason:hitSL?'ORDER SL':'ORDER TP',time:new Date().toLocaleString()});}
+    else survivors.push(p);
+   }
+   qa.positions=survivors;if(!qa.positions.length)qa.basketBase=null;qa.history=qa.history.slice(0,35);
+  }
   const barTime=Number(last.t)||0;
   if(barTime!==qa.lastBar){
    const sig=qaSignal(bars);qa.lastBar=barTime;qa.signal=sig;
-   if(qa.positions.length&&sig!==0&&sig!==qa.positions[0].dir){
-    qaCloseAll(price,'TREND FLIP');
-    if(!qa.positions.length)qaOpenBatch(sig,price);
-   }else if(!qa.positions.length){if(sig!==0)qaOpenBatch(sig,price);}
-   else{
-    const dir=qa.positions[0].dir,lastEntry=qa.positions.reduce((a,p)=>p.time>a.time?p:a,qa.positions[0]).entry;
-    if(dir<0&&price<=lastEntry-20)qaOpenBatch(-1,price);
-    if(dir>0&&price>=lastEntry+20)qaOpenBatch(1,price);
+   if(qa.balance>0){
+    if(qa.positions.length&&sig!==0&&sig!==qa.positions[0].dir){qaCloseAll(price,'TREND FLIP');qaOpenBatch(sig,price);}
+    else if(!qa.positions.length&&sig!==0)qaOpenBatch(sig,price);
+    else if(qa.positions.length){
+     const dir=qa.positions[0].dir,lastEntry=qa.positions.reduce((a,p)=>p.time>a.time?p:a,qa.positions[0]).entry;
+     if(dir<0&&price<=lastEntry-20)qaOpenBatch(-1,price);
+     if(dir>0&&price>=lastEntry+20)qaOpenBatch(1,price);
+    }
    }
   }
   qa.equity.push(qa.balance+qaFloating(price));qa.equity=qa.equity.slice(-45);qaSave();qaRender(price);
  }catch(e){$('qaState').textContent='FEED WAIT';$('qaInfo').textContent='QUANTAM: '+e.message;}
+ finally{qaBusy=false;}
 }
 setTimeout(qaUpdate,3500);setInterval(()=>{if(document.visibilityState==='visible')qaUpdate();},15000);
-
 
 /* QUANTAM V2: independent M1 paper engines for BTCUSD and GOLD. */
 const QV2_START=50,QV2_RISK=0.005,QV2_MAX=3;
