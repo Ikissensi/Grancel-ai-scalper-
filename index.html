@@ -484,7 +484,7 @@ async function qaUpdate(){
  if(qaBusy)return;qaBusy=true;
  try{
   await ensureDerivConnection();
-  const sym=derivSymbols.find(x=>/BTCUSD|BTC\\/USD/i.test(x.symbol+' '+x.name))||derivSymbols.find(x=>/bitcoin/i.test(x.name));
+  const sym=derivSymbols.find(x=>/BTCUSD|BTC\/USD/i.test(x.symbol+' '+x.name))||derivSymbols.find(x=>/bitcoin/i.test(x.name));
   if(!sym)throw new Error('Deriv BTCUSD symbol haipatikani kwa sasa.');
   const {bars}=await getBars(sym.symbol,'M5');if(!bars||bars.length<205)throw new Error('Inahitaji angalau 205 M5 candles.');
   const last=bars.at(-1),price=last.c;qa.lastPrice=price;
